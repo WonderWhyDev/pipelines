@@ -6,8 +6,7 @@ on:
 jobs:
   find_latest_version:
     uses: ./.github/workflows/base_get_latest_repo_version.yml
-    secrets:
-      repoToken: ${{ secrets.REPO_READ_TOKEN }}
+    with:
       environment: qa
 
   qa-flutter-flow-web-deploy:
