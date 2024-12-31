@@ -11,8 +11,9 @@ on:
         value: ${{ jobs.flutter_web_build.outputs.latest_version }}
 
 jobs:
-  flutter_web_build:
-    environment: ${{ inputs.environment }}
+  get_repo_latest_version:
+    environment:
+      name: ${{ inputs.environment }}
     runs-on: ubuntu-latest
     outputs:
         latest_version: ${{ steps.get_version.outputs.latest_version }}

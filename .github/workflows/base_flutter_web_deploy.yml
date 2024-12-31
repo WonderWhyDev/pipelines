@@ -10,9 +10,10 @@ on:
         type: string
 
 jobs:
-  FlutterFlowWebBuild:
+  build_and_deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment:
+      name: ${{ inputs.environment }}
     steps:
       - name: Check out only flutterFlow web folder
         uses: actions/checkout@v4
