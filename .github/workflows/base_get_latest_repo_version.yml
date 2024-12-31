@@ -1,0 +1,37 @@
+name: Get Github Repo Latest Version
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+    outputs:
+      latest_version:
+        description: "latest version of the repo"
+        value: ${{ jobs.flutter_web_build.outputs.latest_version }}
+
+jobs:
+  flutter_web_build:
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    outputs:
+        latest_version: ${{ steps.get_version.outputs.latest_version }}
+    steps:
+      - name: Check out only flutterFlow web folder
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_TOKEN }}
+          fetch-depth: 1
+          sparse-checkout: '.gitignore'
+          sparse-checkout-cone-mode: false
+
+      - name: Get latest version
+        id: get_version
+        run: |
+          ls -l
+          latest_version=$(git log -1 --format=%H)
+          echo "latest_version=$latest_version" >> $GITHUB_ENV
+
+      - name: Output latest version
+        run: echo "The latest version is ${{ env.latest_version }}"

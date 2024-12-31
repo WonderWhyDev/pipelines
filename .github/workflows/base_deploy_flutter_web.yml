@@ -1,0 +1,64 @@
+name: Template Flutter Web Build
+on:
+  workflow_call:
+    inputs:
+      versionToBuild:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+
+jobs:
+  FlutterFlowWebBuild:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Check out only flutterFlow web folder
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_TOKEN }}
+          fetch-depth: 1
+          sparse-checkout: 'flutterFlow/magnum'
+          sparse-checkout-cone-mode: false
+          ref : test_server_deploy
+          version: ${{ inputs.versionToBuild }}
+            
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.24.5
+
+      - run: |
+          cd flutterFlow/magnum
+          sed -i 's|<base href="/">|<base href="/flutterflow/">|' web/index.html
+          flutter clean
+          flutter pub get         
+          flutter build web --release --web-renderer html
+          
+      - name: Brotli compress
+        run: |
+          sudo apt-get  -y install brotli
+          cd flutterFlow/magnum/build/web
+          rm -rf canvaskit
+          find ./ -type f -exec brotli -jZv {} \;
+          
+      - run: |
+          cd flutterFlow/magnum/build/
+          zip -r web.zip web
+
+      - uses: WonderWhyDev/copy-to-ec2-action@106e8ead52dc65e8b5ecd41a80f10668e3894a7f
+        with:
+           ec2IP: ${{ secrets.EC2_IP }}
+           awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+           awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+           awsRegion: ${{ secrets.AWS_REGION }}
+           ec2User: ${{ secrets.EC2_USER }}
+           securityGroupId: ${{ secrets.SECUTIRY_GROUP_ID }}
+           sshKey: ${{ secrets.SSH_KEY }}
+           fileToCopy: flutterFlow/magnum/build/web.zip
+           destination: ~/web.zip
+           unzipDestination: ~/
+
