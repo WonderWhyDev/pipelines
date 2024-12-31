@@ -1,4 +1,4 @@
-name: Template Flutter Web Build
+name: Base Flutter Web Deploy
 on:
   workflow_call:
     inputs:
