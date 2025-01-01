@@ -1,0 +1,28 @@
+name: Test Ground
+on:
+  workflow_dispatch:
+
+jobs:
+  FlutterFlowWebBuild:
+    runs-on: ubuntu-latest
+    environment: qa
+    steps:
+      - run: |
+          touch index.html
+          touch bla.js
+          zip -r web.zip ./
+      - name: check out repository for actions
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/copy_to_ec2
+        with:
+          ec2IP: ${{ secrets.EC2_IP }}
+          awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+          awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+          awsRegion: ${{ secrets.AWS_REGION }}
+          ec2User: ${{ secrets.EC2_USER }}
+          securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+          sshKey: ${{ secrets.SSH_KEY }}
+          fileToCopy: web.zip
+          destination: ~/
+          unzipDestination: ~/
