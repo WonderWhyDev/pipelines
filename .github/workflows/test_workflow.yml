@@ -9,13 +9,24 @@ jobs:
     runs-on: ubuntu-latest
     environment: qa
     steps:
+      - name: check out repository for actions
+        uses: actions/checkout@v4
+
+      - name: Check out only flutterFlow web folder
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_TOKEN }}
+          fetch-depth: 1
+          sparse-checkout: '.gitignore'
+          sparse-checkout-cone-mode: false
 
       - run: |
           pwd
           touch index.html
           touch bla.js
           zip -r web.zip ./
-          ls -l
+          ls -lash
           pwd
 
       - uses: ./.github/actions/copy_to_ec2
