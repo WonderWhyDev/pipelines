@@ -5,6 +5,9 @@ on:
       environment:
         required: true
         type: string
+    secrets:
+      REPO_TOKEN:
+        required: true
     outputs:
       latest_version:
         description: "latest version of the repo"

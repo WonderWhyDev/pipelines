@@ -8,6 +8,8 @@ jobs:
     uses: ./.github/workflows/base_get_latest_repo_version.yml
     with:
       environment: qa
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
   qa-flutter-flow-web-deploy:
     uses: ./.github/workflows/base_flutter_web_deploy.yml
