@@ -52,6 +52,8 @@ jobs:
 
       - run: |
           cd wonderWhy
+          ls -lsh
+          mkdir -p nginx/certs
           echo "${{ secrets.CA_CERTS_FULL_CHAIN }}" > nginx/certs/fullchain.pem  
           echo "${{ secrets.CA_CERTS_PRIVATE_KEY }}" > nginx/certs/privkey.pem 
           zip -r nginx.zip nginx
