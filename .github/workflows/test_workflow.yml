@@ -26,7 +26,7 @@ jobs:
           awsRegion: ${{ secrets.AWS_REGION }}
           ec2User: ${{ secrets.EC2_USER }}
           securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
-          sshKey: ${{ secrets.SSH_KEY }}
+          sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
           fileToCopy: ./web.zip
           destination: ~/
           unzipDestination: ~/
