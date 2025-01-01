@@ -67,9 +67,6 @@ jobs:
           cd flutterFlow/magnum/build/
           zip -r web.zip web
 
-      - name: check out repository for actions
-        uses: actions/checkout@v4
-
       - uses: ./.github/actions/copy_to_ec2
         with:
            ec2IP: ${{ secrets.EC2_IP }}
