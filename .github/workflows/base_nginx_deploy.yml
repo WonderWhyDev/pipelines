@@ -75,7 +75,7 @@ jobs:
              cd nginx
              ls -lsh
              sudo chmod 666 /var/run/docker.sock
-             sudo docker-compose stop nginx
-             sudo docker-compose up nginx -d
+             sudo docker-compose stop local-nginx
+             sudo docker-compose up local-nginx -d
 
 
