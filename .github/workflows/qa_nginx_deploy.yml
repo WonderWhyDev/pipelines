@@ -1,5 +1,4 @@
 name: QA Nginx Deploy
-run-name: ${{ github.actor }} - ${{ github.event.head_commit.message }} commit is running
 on:
   workflow_dispatch:
 
