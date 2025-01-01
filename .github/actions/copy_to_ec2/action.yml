@@ -20,7 +20,9 @@ inputs:
   destination:
     required: true
   unzipDestination:
-    required: true
+    required: false
+  runScript:
+    required: false
 
 runs:
   using: "composite"
@@ -68,11 +70,20 @@ runs:
       run: |
         scp -i SSH_PRIVATE_KEY_FOR_EC2.pem ${{ inputs.fileToCopy }}  ${{ inputs.ec2User }}@${{ inputs.ec2IP }}:${{ inputs.destination }}
 
-    - name: Unzip  flutterFlow Web Build on EC2
+    - name: Unzip on EC2
       shell: bash
+      if: ${{ inputs.unzipDestination }}
       run: |
         ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem ${{ inputs.ec2User }}@${{ inputs.ec2IP }} << 'EOF'
         unzip -o ${{ inputs.destination }} -d ${{ inputs.unzipDestination }}
+        EOF
+
+    - name: Run Script if provided
+      shell: bash
+      if: ${{ inputs.runScript }}
+      run: |
+        ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem ${{ inputs.ec2User }}@${{ inputs.ec2IP }} << 'EOF'
+        ${{ inputs.runScript }}
         EOF
 
     - name: Remove Added Security Group Rule

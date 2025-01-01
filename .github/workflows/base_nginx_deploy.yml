@@ -1,0 +1,77 @@
+name: Base Flutter Web Deploy
+on:
+  workflow_call:
+    inputs:
+      versionToBuild:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+    secrets:
+        REPO_TOKEN:
+            required: true
+        EC2_IP:
+            required: true
+        AWS_ACCESS_KEY:
+            required: true
+        AWS_SECRET_KEY:
+            required: true
+        AWS_REGION:
+            required: true
+        EC2_USER:
+            required: true
+        SECURITY_GROUP_ID:
+            required: true
+        SSH_PRIVATE_KEY_FOR_EC2:
+            required: true
+        CA_CERTS_FULL_CHAIN:
+            required: true
+        CA_CERTS_PRIVATE_KEY:
+            required: true
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    steps:
+      - name: check out repository for actions
+        uses: actions/checkout@v4
+
+      - name: Check out only flutterFlow web folder
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          sparse-checkout: 'nginx'
+          sparse-checkout-cone-mode: false
+          ref :  ${{ inputs.versionToBuild }}
+
+      - run: |
+          cd wonderWhy
+          echo "${{ secrets.CA_CERTS_FULL_CHAIN }}" > nginx/certs/fullchain.pem  
+          echo "${{ secrets.CA_CERTS_PRIVATE_KEY }}" > nginx/certs/privkey.pem 
+          zip -r nginx.zip nginx
+
+      - uses: ./.github/actions/copy_to_ec2
+        with:
+           ec2IP: ${{ secrets.EC2_IP }}
+           awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+           awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+           awsRegion: ${{ secrets.AWS_REGION }}
+           ec2User: ${{ secrets.EC2_USER }}
+           securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+           sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+           fileToCopy: ./wonderWhy/nginx.zip
+           destination: ~/nginx.zip
+           unzipDestination: ~/
+           runScript: |
+             cd nginx
+             sudo chmod 666 /var/run/docker.sock
+             sudo docker-compose stop nginx
+             sudo docker-compose up nginx -d
+
+
