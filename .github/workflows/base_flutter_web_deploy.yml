@@ -32,11 +32,15 @@ jobs:
     environment:
       name: ${{ inputs.environment }}
     steps:
+      - name: check out repository for actions
+        uses: actions/checkout@v4
+
       - name: Check out only flutterFlow web folder
         uses: actions/checkout@v4
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_TOKEN }}
+          path: wonderWhy
           fetch-depth: 1
           sparse-checkout: 'flutterFlow/magnum'
           sparse-checkout-cone-mode: false
@@ -49,7 +53,7 @@ jobs:
           flutter-version: 3.24.5
 
       - run: |
-          cd flutterFlow/magnum
+          cd wonderWhy/flutterFlow/magnum
           sed -i 's|<base href="/">|<base href="/flutterflow/">|' web/index.html
           flutter clean
           flutter pub get         
@@ -58,12 +62,12 @@ jobs:
       - name: Brotli compress
         run: |
           sudo apt-get  -y install brotli
-          cd flutterFlow/magnum/build/web
+          cd wonderWhy/flutterFlow/magnum/build/web
           rm -rf canvaskit
           find ./ -type f -exec brotli -jZv {} \;
           
       - run: |
-          cd flutterFlow/magnum/build/
+          cd wonderWhy/flutterFlow/magnum/build/
           zip -r web.zip web
 
       - uses: ./.github/actions/copy_to_ec2
@@ -75,7 +79,7 @@ jobs:
            ec2User: ${{ secrets.EC2_USER }}
            securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
            sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-           fileToCopy: flutterFlow/magnum/build/web.zip
+           fileToCopy: ./wonderWhy/flutterFlow/magnum/build/web.zip
            destination: ~/web.zip
            unzipDestination: ~/
 
