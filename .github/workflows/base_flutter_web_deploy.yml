@@ -74,9 +74,10 @@ jobs:
            awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
            awsRegion: ${{ secrets.AWS_REGION }}
            ec2User: ${{ secrets.EC2_USER }}
-           securityGroupId: ${{ secrets.SECUTIRY_GROUP_ID }}
+           securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
            sshKey: ${{ secrets.SSH_KEY }}
            fileToCopy: flutterFlow/magnum/build/web.zip
            destination: ~/web.zip
            unzipDestination: ~/
+
 
