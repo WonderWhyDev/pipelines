@@ -7,26 +7,29 @@ jobs:
     runs-on: ubuntu-latest
     environment: qa
     steps:
-
+      - run: |
+          pwd
 
       - name: check out repository for actions
         uses: actions/checkout@v4
 
       - run: |
-          touch index.html
-          touch bla.js
-          zip -r web.zip ./
-          ls -l
-
-      - uses: ./.github/actions/copy_to_ec2
-        with:
-          ec2IP: ${{ secrets.EC2_IP }}
-          awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
-          awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
-          awsRegion: ${{ secrets.AWS_REGION }}
-          ec2User: ${{ secrets.EC2_USER }}
-          securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
-          sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-          fileToCopy: ./web.zip
-          destination: ~/web.zip
-          unzipDestination: ~/
+          pwd
+#          touch index.html
+#          touch bla.js
+#          zip -r web.zip ./
+#          ls -l
+#
+#
+#      - uses: ./.github/actions/copy_to_ec2
+#        with:
+#          ec2IP: ${{ secrets.EC2_IP }}
+#          awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+#          awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+#          awsRegion: ${{ secrets.AWS_REGION }}
+#          ec2User: ${{ secrets.EC2_USER }}
+#          securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+#          sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+#          fileToCopy: ./web.zip
+#          destination: ~/web.zip
+#          unzipDestination: ~/
