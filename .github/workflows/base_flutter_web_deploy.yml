@@ -8,6 +8,23 @@ on:
       environment:
         required: true
         type: string
+    secrets:
+        REPO_TOKEN:
+            required: true
+        EC2_IP:
+            required: true
+        AWS_ACCESS_KEY:
+            required: true
+        AWS_SECRET_KEY:
+            required: true
+        AWS_REGION:
+            required: true
+        EC2_USER:
+            required: true
+        SECURITY_GROUP_ID:
+            required: true
+        SSH_KEY:
+            required: true
 
 jobs:
   build_and_deploy:
