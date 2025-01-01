@@ -1,4 +1,4 @@
-name: Base Flutter Web Deploy
+name: Base Nginx Deploy
 on:
   workflow_call:
     inputs:
