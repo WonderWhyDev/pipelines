@@ -2,26 +2,37 @@ name: Copy To Ec2
 description: 'Copy files To Ec2'
 inputs:
   ec2IP:
+    description: 'IP of the EC2 instance'
     required: true
   awsAccessKeyId:
+    description: 'AWS Access Key ID'
     required: true
   awsSecretKey:
+    description:  'AWS Secret Key'
     required: true
   awsRegion:
+    description: 'AWS Region'
     required: true
   ec2User:
+    description: 'User to connect to EC2'
     required: true
   securityGroupId:
+    description: 'Security Group ID'
     required: true
   sshKey:
+    description: 'SSH Key for EC2'
     required: true
   fileToCopy:
+    description: 'File to copy to EC2'
     required: true
   destination:
+    description: 'Destination on EC2 to copy file'
     required: true
   unzipDestination:
+    description: 'Destination to unzip file on EC2'
     required: false
   runScript:
+    description: 'Script to run on EC2'
     required: false
 
 runs:

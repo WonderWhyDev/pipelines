@@ -10,7 +10,9 @@ runs:
   steps:
     - name: Save variable as artifact
       shell: bash
-      run: echo "${{ inputs.version }}" > version
+      run: |
+        VERSION=${{ inputs.version }}
+        echo $VERSION > version
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4

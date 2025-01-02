@@ -57,6 +57,6 @@ jobs:
           yarn b prismaUp
           yarn b prismaMigrateCi
 #          yarn b testCI
-      - uses: ./.github/actions/upload-version-file
+      - uses: ./.github/actions/upload_version_file
         with:
           version: ${{ needs.find_latest_version.outputs.latest_version }}
