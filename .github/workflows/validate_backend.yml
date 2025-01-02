@@ -12,6 +12,7 @@ jobs:
 
   validate_backend:
     runs-on: ubuntu-latest
+    needs: find_latest_version
     services:
       postgres:
         image: timescale/timescaledb-ha:pg15-ts2.12
@@ -46,13 +47,15 @@ jobs:
         with:
           node-version: '18'
           cache: 'yarn'
-      - run: yarn install
-      - run: yarn b format
-      - run: yarn b lint
-      - run: yarn b build
-      - run: yarn b prismaUp
-      - run: yarn b prismaMigrateCi
-      - run: yarn b testCI
+      - run: |
+          cd wonderWhy
+          yarn install
+          yarn b format
+          yarn b lint
+          yarn b build
+          yarn b prismaUp
+          yarn b prismaMigrateCi
+          yarn b testCI
       - uses: ./.github/actions/upload-version-file
         with:
           version: ${{ needs.find_latest_version.outputs.latest_version }}
