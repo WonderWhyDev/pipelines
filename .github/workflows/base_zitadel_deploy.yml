@@ -39,7 +39,7 @@ jobs:
       - name: check out repository for actions
         uses: actions/checkout@v4
 
-      - name: Check out only flutterFlow web folder
+      - name: Check out only zitadel folder
         uses: actions/checkout@v4
         with:
           repository: WonderWhyDev/wonderWhy
@@ -53,7 +53,7 @@ jobs:
       - run: |
           cd wonderWhy
           ls -lsh
-          mkdir -p nginx/certs
+          mkdir -p zitadel/certs
           echo "${{ secrets.CA_CERTS_FULL_CHAIN }}" > zitadel/certs/fullchain.pem  
           echo "${{ secrets.CA_CERTS_PRIVATE_KEY }}" > zitadel/certs/privkey.pem 
           zip -r zitadel.zip zitadel

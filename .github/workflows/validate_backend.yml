@@ -1,0 +1,58 @@
+name: Validate Backend
+on:
+  workflow_dispatch:
+
+jobs:
+  find_latest_version:
+    uses: ./.github/workflows/base_get_latest_repo_version.yml
+    with:
+      environment: qa
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+
+  validate_backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg15-ts2.12
+        env:
+          POSTGRES_DB: wonderwhyci
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    environment:
+      name: qa
+    steps:
+      - name: check out repository for actions
+        uses: actions/checkout@v4
+
+      - name: Check out only flutterFlow web folder
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          ref:  ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'yarn'
+      - run: yarn install
+      - run: yarn b format
+      - run: yarn b lint
+      - run: yarn b build
+      - run: yarn b prismaUp
+      - run: yarn b prismaMigrateCi
+      - run: yarn b testCI
+      - uses: ./.github/actions/upload-version-file
+        with:
+          version: ${{ needs.find_latest_version.outputs.latest_version }}

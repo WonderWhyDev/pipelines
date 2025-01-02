@@ -39,7 +39,7 @@ jobs:
       - name: check out repository for actions
         uses: actions/checkout@v4
 
-      - name: Check out only flutterFlow web folder
+      - name: Check out only nginx folder
         uses: actions/checkout@v4
         with:
           repository: WonderWhyDev/wonderWhy

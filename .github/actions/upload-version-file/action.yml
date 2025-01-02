@@ -1,0 +1,19 @@
+name: Upload Version File
+description: 'Upload Version File'
+inputs:
+  version:
+    required: true
+    description: 'version for further reference'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Save variable as artifact
+      shell: bash
+      run: echo "${{ inputs.inputs }}" > version
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: version
+        path: version
