@@ -47,6 +47,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'yarn'
+          cache-dependency-path: 'wonderWhy/yarn.lock'
       - run: |
           cd wonderWhy
           yarn install
