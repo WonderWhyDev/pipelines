@@ -10,12 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: qa
     steps:
+      - name: check out repository for actions
+        uses: actions/checkout@v4
+        
       - uses: ./.github/actions/upload_version_file
         with:
           version: success
-
-#      - name: check out repository for actions
-#        uses: actions/checkout@v4
 #
 #      - name: Check out only flutterFlow web folder
 #        uses: actions/checkout@v4
