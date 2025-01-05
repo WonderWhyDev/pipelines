@@ -61,7 +61,7 @@ jobs:
           ec2User: ${{ secrets.EC2_USER }}
           securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
           sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-          fileToCopy: ./wonderWhy/backend.zip
+          fileToCopy: ./backend.zip
           destination: ~/backend.zip
           unzipDestination: ~/
           runScript: |
