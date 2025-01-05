@@ -13,21 +13,6 @@ jobs:
   validate_backend:
     runs-on: ubuntu-latest
     needs: find_latest_version
-    services:
-      postgres:
-        image: timescale/timescaledb-ha:pg15-ts2.12
-        env:
-          POSTGRES_DB: wonderwhyci
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-        ports:
-          - 5432:5432
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     environment:
       name: qa
     steps:
@@ -54,9 +39,57 @@ jobs:
           yarn b format
           yarn b lint
           yarn b build
-          yarn b prismaUp
-          yarn b prismaMigrateCi
-#          yarn b testCI
+#          yarn b testOnce
       - uses: ./.github/actions/upload_version_file
         with:
           version: ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - run: |
+          mkdir backend
+          cp -r wonderWhy/backend/prisma backend/
+          cp wonderWhy/backend/dist/app.js backend/
+          cp wonderWhy/backend/package.json backend/
+          cp wonderWhy/backend/deploy/* backend/
+          zip -r backend.zip backend
+
+      - uses: ./.github/actions/copy_to_ec2
+        with:
+          ec2IP: ${{ secrets.EC2_IP }}
+          awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+          awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+          awsRegion: ${{ secrets.AWS_REGION }}
+          ec2User: ${{ secrets.EC2_USER }}
+          securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+          sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+          fileToCopy: ./wonderWhy/backend.zip
+          destination: ~/backend.zip
+          unzipDestination: ~/
+          runScript: |
+            cd backend
+            sh deploy.sh
+
+
+#
+#
+#      - name: Start Docker Container
+#        env:
+#          MAGNUM_CLIENT_ID: ${{ secrets.MAGNUM_CLIENT_ID }}
+#          MAGNUM_CLIENT_SECRET: ${{ secrets.MAGNUM_CLIENT_SECRET }}
+#        run : |
+#          ssh -t -i SSH_PRIVATE_KEY_FOR_EC2.pem ${{ env.ELASTIC_IP }}  << EOF
+#            set -e
+#            sudo chmod 666 /var/run/docker.sock
+#            cd wonderWhy
+#            sed -i '/^export CLIENT_ID=/d' ~/.bashrc
+#            echo 'export CLIENT_ID=$MAGNUM_CLIENT_ID' >> ~/.bashrc
+#            sed -i '/^export CLIENT_SECRET=/d' ~/.bashrc
+#            echo 'export CLIENT_SECRET=$MAGNUM_CLIENT_SECRET' >> ~/.bashrc
+#            sed -i '/^export ZITADEL_AUTHORITY=/d' ~/.bashrc
+#            echo 'export ZITADEL_AUTHORITY="https://auth.magnum.wondermove.in"' >> ~/.bashrc
+#            source /home/ec2-user/.bashrc
+#            docker-compose stop backend
+#            docker-compose up setup -d
+#            docker-compose up backend -d
+#          EOF
+
+

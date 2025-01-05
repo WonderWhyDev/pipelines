@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: check out repository for actions
         uses: actions/checkout@v4
-        
+
       - uses: ./.github/actions/upload_version_file
         with:
           version: success
