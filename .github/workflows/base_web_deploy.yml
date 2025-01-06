@@ -86,7 +86,7 @@ jobs:
         run: |
           cd wonderWhy/webDeploy
           sudo apt-get  -y install brotli
-          find ./ -type f -exec brotli -jZv {} \;
+          find ./ -type f -exec brotli -jZkv {} \;
 
       - run: |
           cd wonderWhy
