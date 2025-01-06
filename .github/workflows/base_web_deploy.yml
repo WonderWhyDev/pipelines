@@ -69,8 +69,8 @@ jobs:
           echo "CLIENT_ID=${{ secrets.OAUTH_CLIENT_ID }}" >> web/.env
           echo "CLIENT_SECRET=${{ secrets.OAUTH_CLIENT_SECRET }}" >> web/.env
           yarn workspace web build
-          mkdir -p webDeploy/reactWeb
-          mv web/dist webDeploy/reactWeb
+          mv web/dist webDeploy/
+          mv webDeploy/dist webDeploy/reactWeb
 
       - name: build flutter flow web
         run: |

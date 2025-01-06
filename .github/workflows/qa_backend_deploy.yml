@@ -67,6 +67,4 @@ jobs:
           unzipDestination: ~/
           runScript: |
             cd backend
-            echo 'export CLIENT_ID=${{ secrets.OAUTH_CLINET_ID}}' >> ~/.bashrc
-            echo 'export CLIENT_SECRET=${{ secrets.OAUTH_CLINET_SECRET}}' >> ~/.bashrc
-            sh deploy.sh
+            sh deploy.sh ${{ secrets.OAUTH_CLINET_ID}} ${{ secrets.OAUTH_CLINET_SECRET}}
