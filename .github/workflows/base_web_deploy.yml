@@ -104,7 +104,7 @@ jobs:
            fileToCopy: ./wonderWhy/webDeploy.zip
            destination: ~/webDeploy.zip
            unzipDestination: ~/
-           scriptToRun: |
+           runScript: |
              cd webDeploy
              sudo rm -rf ~/nginx/html
              mkdir ~/nginx/html
