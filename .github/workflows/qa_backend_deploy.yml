@@ -1,4 +1,4 @@
-name: Validate Backend
+name: QA backend Deploy
 run-name: QA backend Deploy
 on:
   workflow_dispatch:
