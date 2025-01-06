@@ -66,8 +66,8 @@ jobs:
           yarn install
           rm -rf web/.env
           touch web/.env
-          echo "CLIENT_ID=${{ OAUTH_CLIENT_ID }}" >> web/.env
-          echo "CLIENT_SECRET=${{ OAUTH_CLIENT_ID }}" >> web/.env
+          echo "CLIENT_ID=${{ secrets.OAUTH_CLIENT_ID }}" >> web/.env
+          echo "CLIENT_SECRET=${{ secrets.OAUTH_CLIENT_SECRET }}" >> web/.env
           yarn workspace web build
           mkdir -p webDeploy/reactWeb
           mv web/dist webDeploy/reactWeb

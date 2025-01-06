@@ -1,5 +1,5 @@
 name: QA Nginx Deploy
-run-name: $(date +'%d/%m %H:%M:%S') - QA Nginx Deploy
+run-name: QA Nginx Deploy
 on:
   workflow_dispatch:
 

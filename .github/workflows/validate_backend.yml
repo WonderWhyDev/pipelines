@@ -1,5 +1,5 @@
 name: Validate Backend
-run-name: $(date +'%d/%m %H:%M:%S') - QA backend Deploy
+run-name: QA backend Deploy
 on:
   workflow_dispatch:
 

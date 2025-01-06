@@ -1,5 +1,5 @@
 name: QA Web Deploy
-run-name: $(date +'%d/%m %H:%M:%S') - QA Web Deploy
+run-name: QA Web Deploy
 on:
   workflow_dispatch:
 
