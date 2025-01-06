@@ -67,4 +67,4 @@ jobs:
           unzipDestination: ~/
           runScript: |
             cd backend
-            sh deploy.sh ${{ secrets.OAUTH_CLINET_ID}} ${{ secrets.OAUTH_CLINET_SECRET}}
+            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID}} ${{ secrets.OAUTH_CLIENT_SECRET}}
