@@ -77,7 +77,7 @@ jobs:
           cd wonderWhy/flutterFlow/magnum
           flutter clean
           flutter pub get         
-          flutter build web --release --web-renderer html  --source-maps
+          flutter build web --release --web-renderer=html  --source-maps
           rm -rf build/web/canvaskit
           mv build/web ../../webDeploy/
           mv ../../webDeploy/web ../../webDeploy/ffWeb
@@ -108,9 +108,9 @@ jobs:
              cd webDeploy
              sudo rm -rf ~/nginx/html
              mkdir ~/nginx/html
-             mkdir ~/nginx/html/re
-             cp -r ffWeb/* ~/nginx/html/
-             cp -r reactWeb/* ~/nginx/html/re/
+             mkdir ~/nginx/html/flutterflow
+             cp -r ffWeb/* ~/nginx/html/flutterflow/
+             cp -r reactWeb/* ~/nginx/html/
              echo "completed copying files"
              
 
