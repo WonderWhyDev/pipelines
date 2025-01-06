@@ -108,8 +108,8 @@ jobs:
              cd webDeploy
              sudo rm -rf ~/nginx/html
              mkdir ~/nginx/html
-             mkdir ~/nginx/html/flutterflow
-             cp -r ffWeb/* ~/nginx/html/flutterflow/
+             mkdir ~/nginx/flutterflow
+             cp -r ffWeb/* ~/nginx/flutterflow/
              cp -r reactWeb/* ~/nginx/html/
              echo "completed copying files"
              
