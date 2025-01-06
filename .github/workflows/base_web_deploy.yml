@@ -108,8 +108,8 @@ jobs:
              sudo rm -rf ~/nginx/html
              mkdir ~/nginx/html
              mkdir ~/nginx/html/re
-             sudo cp -r ffWeb/* ~/nginx/html/
-             sudo cp -r reactWeb/* ~/nginx/html/re/
+             cp -r ffWeb/* ~/nginx/html/
+             cp -r reactWeb/* ~/nginx/html/re/
              
 
 
