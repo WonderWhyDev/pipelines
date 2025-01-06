@@ -25,6 +25,10 @@ on:
             required: true
         SSH_PRIVATE_KEY_FOR_EC2:
             required: true
+        OAUTH_CLIENT_ID:
+            required: true
+        OAUTH_CLIENT_SECRET:
+            required: true
 
 jobs:
   build_and_deploy:
@@ -35,15 +39,13 @@ jobs:
       - name: check out repository for actions
         uses: actions/checkout@v4
 
-      - name: Check out only flutterFlow web folder
+      - name: Check out application code
         uses: actions/checkout@v4
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
-          sparse-checkout: 'flutterFlow/magnum'
-          sparse-checkout-cone-mode: false
           ref :  ${{ inputs.versionToBuild }}
 
       - name: Set up Flutter SDK
@@ -52,23 +54,44 @@ jobs:
           channel: stable
           flutter-version: 3.24.5
 
-      - run: |
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: 'wonderWhy/yarn.lock'
+
+      - name: build react web
+        run: |
+          cd wonderWhy
+          yarn install
+          rm -rf web/.env
+          touch web/.env
+          echo "CLIENT_ID=${{ OAUTH_CLIENT_ID }}" >> web/.env
+          echo "CLIENT_SECRET=${{ OAUTH_CLIENT_ID }}" >> web/.env
+          yarn workspace web build
+          mkdir -p webDeploy/reactWeb
+          mv web/dist webDeploy/reactWeb
+
+      - name: build flutter flow web
+        run: |
           cd wonderWhy/flutterFlow/magnum
           sed -i 's|<base href="/">|<base href="/flutterflow/">|' web/index.html
           flutter clean
           flutter pub get         
           flutter build web --release --web-renderer html
-          
+          rm -rf build/web/canvaskit
+          mkdir -p ../../webDeploy/ffWeb
+          mv build/web ../../webDeploy/ffWeb
+
       - name: Brotli compress
         run: |
+          cd wonderWhy/webDeploy
           sudo apt-get  -y install brotli
-          cd wonderWhy/flutterFlow/magnum/build/web
-          rm -rf canvaskit
           find ./ -type f -exec brotli -jZv {} \;
-          
+
       - run: |
-          cd wonderWhy/flutterFlow/magnum/build/
-          zip -r web.zip web
+          cd wonderWhy
+          zip -r webDeploy.zip webDeploy
 
       - uses: ./.github/actions/copy_to_ec2
         with:
@@ -79,8 +102,8 @@ jobs:
            ec2User: ${{ secrets.EC2_USER }}
            securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
            sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-           fileToCopy: ./wonderWhy/flutterFlow/magnum/build/web.zip
-           destination: ~/web.zip
+           fileToCopy: ./wonderWhy/webDeploy.zip
+           destination: ~/webDeploy.zip
            unzipDestination: ~/
 
 
