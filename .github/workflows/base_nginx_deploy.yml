@@ -29,6 +29,8 @@ on:
             required: true
         CA_CERTS_PRIVATE_KEY:
             required: true
+        DOMAIN_NAME:
+            required: true
 
 jobs:
   build_and_deploy:
@@ -72,7 +74,7 @@ jobs:
            unzipDestination: ~/
            runScript: |
              cd nginx
-             sh deploy.sh
+             sh deploy.sh ${{ secrets.DOMAIN_NAME }}
 
 
 

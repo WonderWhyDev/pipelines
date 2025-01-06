@@ -75,13 +75,12 @@ jobs:
       - name: build flutter flow web
         run: |
           cd wonderWhy/flutterFlow/magnum
-          sed -i 's|<base href="/">|<base href="/flutterflow/">|' web/index.html
           flutter clean
           flutter pub get         
           flutter build web --release --web-renderer html
           rm -rf build/web/canvaskit
-          mkdir -p ../../webDeploy/ffWeb
-          mv build/web ../../webDeploy/ffWeb
+          mv build/web ../../webDeploy/
+          mv ../../webDeploy/web ../../webDeploy/ffWeb
 
       - name: Brotli compress
         run: |
