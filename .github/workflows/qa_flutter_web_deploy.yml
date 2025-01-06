@@ -1,4 +1,5 @@
 name: QA Flutter Web Deploy
+run-name: $(date +'%d/%m %H:%M:%S') - QA Flutter Web Deploy
 on:
   workflow_dispatch:
 

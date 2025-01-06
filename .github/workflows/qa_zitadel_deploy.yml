@@ -1,4 +1,5 @@
 name: QA Zitadel Deploy
+run-name: $(date +'%d/%m %H:%M:%S') - QA Zitadel Deploy
 on:
   workflow_dispatch:
 
