@@ -67,30 +67,6 @@ jobs:
           unzipDestination: ~/
           runScript: |
             cd backend
+            echo 'export CLIENT_ID=${{ secrets.OAUTH_CLINET_ID}}' >> ~/.bashrc
+            echo 'export CLIENT_SECRET=${{ secrets.OAUTH_CLINET_ID}}' >> ~/.bashrc
             sh deploy.sh
-
-
-#
-#
-#      - name: Start Docker Container
-#        env:
-#          MAGNUM_CLIENT_ID: ${{ secrets.MAGNUM_CLIENT_ID }}
-#          MAGNUM_CLIENT_SECRET: ${{ secrets.MAGNUM_CLIENT_SECRET }}
-#        run : |
-#          ssh -t -i SSH_PRIVATE_KEY_FOR_EC2.pem ${{ env.ELASTIC_IP }}  << EOF
-#            set -e
-#            sudo chmod 666 /var/run/docker.sock
-#            cd wonderWhy
-#            sed -i '/^export CLIENT_ID=/d' ~/.bashrc
-#            echo 'export CLIENT_ID=$MAGNUM_CLIENT_ID' >> ~/.bashrc
-#            sed -i '/^export CLIENT_SECRET=/d' ~/.bashrc
-#            echo 'export CLIENT_SECRET=$MAGNUM_CLIENT_SECRET' >> ~/.bashrc
-#            sed -i '/^export ZITADEL_AUTHORITY=/d' ~/.bashrc
-#            echo 'export ZITADEL_AUTHORITY="https://auth.magnum.wondermove.in"' >> ~/.bashrc
-#            source /home/ec2-user/.bashrc
-#            docker-compose stop backend
-#            docker-compose up setup -d
-#            docker-compose up backend -d
-#          EOF
-
-
