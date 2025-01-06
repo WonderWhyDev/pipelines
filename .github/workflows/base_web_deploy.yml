@@ -110,6 +110,7 @@ jobs:
              mkdir ~/nginx/html/re
              cp -r ffWeb/* ~/nginx/html/
              cp -r reactWeb/* ~/nginx/html/re/
+             echo "completed copying files"
              
 
 
