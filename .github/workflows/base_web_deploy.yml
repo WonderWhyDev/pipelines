@@ -78,7 +78,6 @@ jobs:
           flutter clean
           flutter pub get         
           flutter build web --release --web-renderer html
-          rm -rf build/web/canvaskit
           mv build/web ../../webDeploy/
           mv ../../webDeploy/web ../../webDeploy/ffWeb
 
@@ -104,5 +103,13 @@ jobs:
            fileToCopy: ./wonderWhy/webDeploy.zip
            destination: ~/webDeploy.zip
            unzipDestination: ~/
+           scriptToRun: |
+             cd webDeploy
+             sudo rm -rf ~/nginx/html
+             mkdir ~/nginx/html
+             mkdir ~/nginx/html/re
+             sudo cp -r ffWeb/* ~/nginx/html/
+             sudo cp -r reactWeb/* ~/nginx/html/re/
+             
 
 
