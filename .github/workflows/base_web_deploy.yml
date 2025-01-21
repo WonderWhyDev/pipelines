@@ -110,6 +110,7 @@ jobs:
              sudo rm -rf ~/nginx/html
              mkdir ~/nginx/html
              mkdir ~/nginx/flutterflow
+             mkdir ~/nginx/config
              cp -r ffWeb/* ~/nginx/flutterflow/
              cp -r reactWeb/* ~/nginx/html/
              echo "completed copying files"
