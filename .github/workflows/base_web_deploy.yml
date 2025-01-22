@@ -118,7 +118,7 @@ jobs:
              BACKEND_DOMAIN="https://$BASE_DOMAIN"
              REDIRECT_URL="https://$BASE_DOMAIN/flutterflow/"
              echo '{
-                "authDomain": "'"$BASE_DOMAIN"'",
+                "authDomain": "'"https://$AUTH_DOMAIN"'",
                 "appBackendDomain": "'"$BACKEND_DOMAIN"'",
                 "clientId": "'"${{ secrets.OAUTH_CLIENT_ID }}"'",
                 "redirectUrl": "'"$REDIRECT_URL"'",
