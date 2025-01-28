@@ -115,7 +115,7 @@ jobs:
              echo "completed copying files"
              BASE_DOMAIN=$(echo "$AUTH_DOMAIN" | sed 's/^auth\.//')
              BACKEND_DOMAIN="https://$BASE_DOMAIN"
-             REDIRECT_URL="https://$BASE_DOMAIN/flutterflow/"
+             REDIRECT_URL="https://$BASE_DOMAIN"
              echo '{
                 "authDomain": "'"https://$AUTH_DOMAIN"'",
                 "appBackendDomain": "'"$BACKEND_DOMAIN"'",
