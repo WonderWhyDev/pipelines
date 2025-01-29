@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: WonderWhyDev/wonderWhy
-          token: ${{ secrets.REPO_TOKEN }}
+          token: ${{ secrets.REPO_READ_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
           ref:  ${{ needs.find_latest_version.outputs.latest_version }}
