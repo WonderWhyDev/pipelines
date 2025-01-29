@@ -67,4 +67,4 @@ jobs:
           unzipDestination: ~/
           runScript: |
             cd backend
-            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID}} ${{ secrets.OAUTH_CLIENT_SECRET}}
+            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} ${{ secrets.OAUTH_CLIENT_SECRET }}
