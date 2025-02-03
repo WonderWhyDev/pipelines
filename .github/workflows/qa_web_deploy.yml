@@ -2,6 +2,15 @@ name: QA Web Deploy
 run-name: QA Web Deploy
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment Environment"
+        required: true
+        default: "qa"
+        type: choice
+        options:
+          - qa
+          - prod
 
 jobs:
   find_latest_version:
@@ -28,3 +37,10 @@ jobs:
         SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
         OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
         OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+  
+  prod-web-deploy:
+    needs: qa-web-deploy
+    if: ${{ inputs.environment == 'prod' }}
+    uses: ./.github/workflows/prod_web_deploy.yml
+    with:
+      latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
