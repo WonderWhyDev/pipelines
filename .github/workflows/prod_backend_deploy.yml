@@ -5,6 +5,7 @@ on:
     inputs:
       latest_version:
         required: true
+        type: string
 
 jobs:
   validate_backend:
