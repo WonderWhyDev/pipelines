@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: find_latest_version
     outputs:
-      latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
+      latest_version: ${{ steps.set_version.outputs.latest_version }} 
     environment:
       name: qa
     steps:
@@ -54,7 +54,6 @@ jobs:
       - uses: ./.github/actions/upload_version_file
         with:
           version: ${{ needs.find_latest_version.outputs.latest_version }}
-
       # - run: |
       #     mkdir backend
       #     cp -r wonderWhy/backend/prisma backend/
@@ -79,9 +78,17 @@ jobs:
       #       cd backend
       #       sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} ${{ secrets.OAUTH_CLIENT_SECRET }}
 
+      - name: Set latest_version output
+        id: set_version
+        run: echo "latest_version=${{ needs.find_latest_version.outputs.latest_version }}" >> $GITHUB_ENV
+
+
   prod_deploy:
     needs: validate_backend
     if: ${{ inputs.environment == 'prod' }}
     uses: ./.github/workflows/test-workflow.yml
     with:
       latest_version: ${{ needs.validate_backend.outputs.latest_version }}
+
+
+     
