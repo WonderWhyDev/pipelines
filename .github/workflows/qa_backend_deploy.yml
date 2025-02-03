@@ -54,34 +54,34 @@ jobs:
       - uses: ./.github/actions/upload_version_file
         with:
           version: ${{ needs.find_latest_version.outputs.latest_version }}
-      # - run: |
-      #     mkdir backend
-      #     cp -r wonderWhy/backend/prisma backend/
-      #     cp wonderWhy/backend/dist/app.js backend/
-      #     cp wonderWhy/backend/package.json backend/
-      #     cp wonderWhy/backend/deploy/* backend/
-      #     zip -r backend.zip backend
+      - run: |
+          sed -i 's|name: wonderwhy_postgres-network|name: wonderwhy-network|' wonderWhy/backend/deploy/compose.yml
+          mkdir backend
+          cp -r wonderWhy/backend/prisma backend/
+          cp wonderWhy/backend/dist/app.js backend/
+          cp wonderWhy/backend/package.json backend/
+          cp wonderWhy/backend/deploy/* backend/
+          zip -r backend.zip backend
 
-      # - uses: ./.github/actions/copy_to_ec2
-      #   with:
-      #     ec2IP: ${{ secrets.EC2_IP }}
-      #     awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
-      #     awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
-      #     awsRegion: ${{ secrets.AWS_REGION }}
-      #     ec2User: ${{ secrets.EC2_USER }}
-      #     securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
-      #     sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-      #     fileToCopy: ./backend.zip
-      #     destination: ~/backend.zip
-      #     unzipDestination: ~/
-      #     runScript: |
-      #       cd backend
-      #       sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} ${{ secrets.OAUTH_CLIENT_SECRET }}
+      - uses: ./.github/actions/copy_to_ec2
+        with:
+          ec2IP: ${{ secrets.EC2_IP }}
+          awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+          awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+          awsRegion: ${{ secrets.AWS_REGION }}
+          ec2User: ${{ secrets.EC2_USER }}
+          securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+          sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+          fileToCopy: ./backend.zip
+          destination: ~/backend.zip
+          unzipDestination: ~/
+          runScript: |
+            cd backend
+            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} ${{ secrets.OAUTH_CLIENT_SECRET }}
 
       - name: Set latest_version output
         id: set_version
         run: echo "latest_version=${{ needs.find_latest_version.outputs.latest_version }}" >> $GITHUB_ENV
-
 
   prod_deploy:
     needs: validate_backend
@@ -89,6 +89,3 @@ jobs:
     uses: ./.github/workflows/test-workflow.yml
     with:
       latest_version: ${{ needs.validate_backend.outputs.latest_version }}
-
-
-     
