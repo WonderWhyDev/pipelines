@@ -1,0 +1,16 @@
+name: Magnum backend Deploy
+run-name: Magnum backend Deploy
+on:
+  workflow_call:
+    inputs:
+      latest_version:
+        required: true
+
+jobs:
+  validate_backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Work Flow
+        run: | 
+          echo "Called SuccessFully"
+          echo "${{inputs.latest_version}}"
