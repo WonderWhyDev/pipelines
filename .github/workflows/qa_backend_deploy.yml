@@ -24,8 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: find_latest_version
     outputs:
-      latest_version:
-        value: ${{ needs.find_latest_version.outputs.latest_version }}
+      latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
     environment:
       name: qa
     steps:
