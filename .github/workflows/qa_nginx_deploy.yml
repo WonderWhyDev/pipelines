@@ -2,6 +2,15 @@ name: QA Nginx Deploy
 run-name: QA Nginx Deploy
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment Environment"
+        required: true
+        default: "qa"
+        type: choice
+        options:
+          - qa
+          - prod
 
 jobs:
   find_latest_version:
@@ -29,3 +38,10 @@ jobs:
         CA_CERTS_FULL_CHAIN: ${{ secrets.CA_CERTS_FULL_CHAIN }}
         CA_CERTS_PRIVATE_KEY: ${{ secrets.CA_CERTS_PRIVATE_KEY }}
         DOMAIN_NAME: test1
+
+  prod-web-deploy:
+    needs: qa-nginx-deploy
+    if: ${{ inputs.environment == 'prod' }}
+    uses: ./.github/workflows/prod_nginx_deploy.yml
+    with:
+      latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
