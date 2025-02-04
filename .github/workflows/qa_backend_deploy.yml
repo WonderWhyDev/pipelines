@@ -87,7 +87,7 @@ jobs:
         name: magnum
       latest_version: ${{ needs.validate_backend.outputs.latest_version }}
     steps:
-     - name: check out repository for actions
+      - name: check out repository for actions
         uses: actions/checkout@v4
 
       - name: Check out wonderwhy folder
