@@ -44,4 +44,3 @@ jobs:
     uses: ./.github/workflows/prod_web_deploy.yml
     with:
       latest_version: ${{ needs.qa-web-deploy.outputs.latest_version }}
-      token: ${{ needs.qa-web-deploy.outputs.token }}
