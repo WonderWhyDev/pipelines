@@ -41,6 +41,7 @@ jobs:
   prod-web-deploy:
     needs: qa-web-deploy
     if: ${{ inputs.environment == 'prod' }}
+    uses: ./.github/workflows/base_web_deploy.yml
     with:
       versionToBuild: ${{ needs.qa-web-deploy.outputs.latest_version }}
       environment: magnum
