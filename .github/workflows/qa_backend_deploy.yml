@@ -81,11 +81,13 @@ jobs:
 
       - name: Set latest_version output
         id: set_version
-        run: echo "latest_version=${{ needs.find_latest_version.outputs.latest_version }}" >> $GITHUB_ENV
+        run: | 
+          echo "version = ${{ needs.find_latest_version.outputs.latest_version }}"
+          echo "latest_version=${{ needs.find_latest_version.outputs.latest_version }}" >> $GITHUB_ENV
 
   prod_deploy:
     needs: validate_backend
     if: ${{ inputs.environment == 'prod' }}
-    uses: ./.github/workflows/prod_backend_deploy.yml
+    uses: ./.github/workflows/test-workflow.yml
     with:
       latest_version: ${{ needs.validate_backend.outputs.latest_version }}

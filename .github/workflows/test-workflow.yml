@@ -1,0 +1,15 @@
+name: Magnum backend Deploy
+run-name: Magnum backend Deploy
+on:
+  workflow_call:
+    inputs:
+      latest_version:
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: show version
+        run: echo "version = ${{ inputs.latest_version }}"
