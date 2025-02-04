@@ -41,6 +41,17 @@ jobs:
   prod-web-deploy:
     needs: qa-web-deploy
     if: ${{ inputs.environment == 'prod' }}
-    uses: ./.github/workflows/prod_web_deploy.yml
     with:
-      latest_version: ${{ needs.qa-web-deploy.outputs.latest_version }}
+      versionToBuild: ${{ needs.qa-web-deploy.outputs.latest_version }}
+      environment: magnum
+    secrets:
+        REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+        EC2_IP: ${{ secrets.EC2_IP }}
+        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        EC2_USER: ${{ secrets.EC2_USER }}
+        SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
+        SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+        OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+        OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
