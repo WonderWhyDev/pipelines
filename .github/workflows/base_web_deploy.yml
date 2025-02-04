@@ -48,8 +48,6 @@ jobs:
         id: set_version
         run: echo "latest_version=${{ inputs.versionToBuild }}" >> $GITHUB_OUTPUT
 
-        run: echo "repo_token=${{ secrets.REPO_TOKEN }}" >> $GITHUB_OUTPUT
-
       - name: check out repository for actions
         uses: actions/checkout@v4
 
