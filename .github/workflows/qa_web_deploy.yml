@@ -38,14 +38,7 @@ jobs:
         OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
         OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
     outputs:
-      latest_version: ${{ steps.set_version.outputs.latest_version }}
-
-    steps:
-      - name: Set latest_version output
-        id: set_version
-        run: | 
-          echo "version = ${{ needs.find_latest_version.outputs.latest_version }}"
-          echo "latest_version=${{ needs.find_latest_version.outputs.latest_version }}" >> $GITHUB_ENV
+      latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
   
   prod-web-deploy:
     needs: qa-web-deploy
