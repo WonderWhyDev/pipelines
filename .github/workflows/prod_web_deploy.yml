@@ -8,6 +8,7 @@ on:
         type: string
       token:
         required: true
+        type: string
         description: Repo Read Token
 
 jobs:
