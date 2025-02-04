@@ -54,6 +54,7 @@ jobs:
       - uses: ./.github/actions/upload_version_file
         with:
           version: ${{ needs.find_latest_version.outputs.latest_version }}
+          env: qa
       - run: |
           sed -i 's|name: wonderwhy_postgres-network|name: wonderwhy-network|' wonderWhy/backend/deploy/compose.yml
           mkdir backend
@@ -112,6 +113,7 @@ jobs:
       - uses: ./.github/actions/upload_version_file
         with:
           version: ${{ needs.validate_backend.outputs.latest_version }}
+          env: prod
       - run: |
           mkdir backend
           cp -r wonderWhy/backend/prisma backend/
