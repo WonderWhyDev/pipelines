@@ -25,6 +25,7 @@ jobs:
     needs: find_latest_version
     outputs:
       latest_version: ${{ steps.set_version.outputs.latest_version }} 
+      token: ${{ secrets.REPO_READ_TOKEN }}
     environment:
       name: qa
     steps:
@@ -91,4 +92,4 @@ jobs:
     uses: ./.github/workflows/test-workflow.yml
     with:
       latest_version: ${{ needs.validate_backend.outputs.latest_version }}
-      token: ${{ secrets.REPO_READ_TOKEN }}
+      token: ${{ needs.validate_backend.outputs.REPO_READ_TOKEN }}
