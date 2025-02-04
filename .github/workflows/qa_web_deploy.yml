@@ -23,6 +23,9 @@ jobs:
   qa-web-deploy:
     uses: ./.github/workflows/base_web_deploy.yml
     needs: find_latest_version
+    outputs:
+      latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
+      token: ${{ secrets.REPO_READ_TOKEN }}
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
       environment: qa
@@ -37,9 +40,6 @@ jobs:
         SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
         OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
         OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
-    outputs:
-      latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
-      token: ${{ secrets.REPO_READ_TOKEN }}
   
   prod-web-deploy:
     needs: qa-web-deploy
