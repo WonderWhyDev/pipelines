@@ -92,4 +92,4 @@ jobs:
     uses: ./.github/workflows/test-workflow.yml
     with:
       latest_version: ${{ needs.validate_backend.outputs.latest_version }}
-      token: ${{ needs.validate_backend.outputs.REPO_READ_TOKEN }}
+      token: ${{ needs.validate_backend.outputs.token }}
