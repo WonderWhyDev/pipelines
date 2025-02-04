@@ -38,10 +38,20 @@ jobs:
         CA_CERTS_FULL_CHAIN: ${{ secrets.CA_CERTS_FULL_CHAIN }}
         CA_CERTS_PRIVATE_KEY: ${{ secrets.CA_CERTS_PRIVATE_KEY }}
         DOMAIN_NAME: test1
+    outputs:
+      latest_version: ${{ steps.set_version.outputs.latest_version }}
+
+    steps:
+      - name: Set latest_version output
+        id: set_version
+        run: | 
+          echo "version = ${{ needs.find_latest_version.outputs.latest_version }}"
+          echo "latest_version=${{ needs.find_latest_version.outputs.latest_version }}" >> $GITHUB_ENV
 
   prod-web-deploy:
     needs: qa-nginx-deploy
     if: ${{ inputs.environment == 'prod' }}
     uses: ./.github/workflows/prod_nginx_deploy.yml
     with:
-      latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
+      latest_version: ${{ needs.qa-nginx-deploy.outputs.latest_version }}
+      token: ${{ secrets.REPO_READ_TOKEN }}

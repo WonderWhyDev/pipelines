@@ -37,10 +37,20 @@ jobs:
         SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
         OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
         OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+    outputs:
+      latest_version: ${{ steps.set_version.outputs.latest_version }}
+
+    steps:
+      - name: Set latest_version output
+        id: set_version
+        run: | 
+          echo "version = ${{ needs.find_latest_version.outputs.latest_version }}"
+          echo "latest_version=${{ needs.find_latest_version.outputs.latest_version }}" >> $GITHUB_ENV
   
-  # prod-web-deploy:
-  #   needs: qa-web-deploy
-  #   if: ${{ inputs.environment == 'prod' }}
-  #   uses: ./.github/workflows/prod_web_deploy.yml
-  #   with:
-  #     latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
+  prod-web-deploy:
+    needs: qa-web-deploy
+    if: ${{ inputs.environment == 'prod' }}
+    uses: ./.github/workflows/prod_web_deploy.yml
+    with:
+      latest_version: ${{ needs.qa-web-deploy.outputs.latest_version }}
+      token: ${{ secrets.REPO_READ_TOKEN }}
