@@ -30,8 +30,10 @@ on:
         OAUTH_CLIENT_SECRET:
             required: true
     outputs:
-      latest_version: ${{ jobs.build_and_deploy.outputs.latest_version }}
-      token: ${{ jobs.build_and_deploy.outputs.token }}
+      latest_version: 
+        value: ${{ jobs.build_and_deploy.outputs.latest_version }}
+      token: 
+        value: ${{ jobs.build_and_deploy.outputs.token }}
 
 jobs:
   build_and_deploy:
