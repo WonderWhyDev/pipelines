@@ -86,6 +86,6 @@ jobs:
   prod_deploy:
     needs: validate_backend
     if: ${{ inputs.environment == 'prod' }}
-    uses: ./.github/workflows/test-workflow.yml
+    uses: ./.github/workflows/prod_backend_deploy.yml
     with:
       latest_version: ${{ needs.validate_backend.outputs.latest_version }}
