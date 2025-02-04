@@ -6,10 +6,6 @@ on:
       latest_version:
         required: true
         type: string
-      token:
-        required: true
-        type: string
-        description: Repo Read Token
 
 jobs:
   magnum-web-deploy:
@@ -18,7 +14,7 @@ jobs:
       versionToBuild: ${{ inputs.latest_version }}
       environment: magnum
     secrets:
-        REPO_TOKEN: ${{ inputs.token }}
+        REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
         EC2_IP: ${{ secrets.EC2_IP }}
         AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}

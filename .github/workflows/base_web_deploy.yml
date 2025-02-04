@@ -32,8 +32,6 @@ on:
     outputs:
       latest_version: 
         value: ${{ jobs.build_and_deploy.outputs.latest_version }}
-      token: 
-        value: ${{ jobs.build_and_deploy.outputs.token }}
 
 jobs:
   build_and_deploy:
@@ -42,7 +40,6 @@ jobs:
       name: ${{ inputs.environment }}
     outputs:
       latest_version: ${{ steps.set_version.outputs.latest_version }}
-      token: ${{ secrets.REPO_TOKEN }}
     steps:
       - name: Set latest version output
         id: set_version
