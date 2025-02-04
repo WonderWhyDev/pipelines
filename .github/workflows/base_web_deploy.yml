@@ -30,12 +30,8 @@ on:
         OAUTH_CLIENT_SECRET:
             required: true
     outputs:
-      latest_version:
-        description: "The latest version built"
-        value: ${{ inputs.versionToBuild }}
-      token:
-        description: "The repository token"
-        value: ${{ secrets.REPO_TOKEN }}
+      latest_version: ${{ steps.set_version.outputs.latest_version }}
+      token: ${{ steps.set_token.outputs.repo_token }}
 
 jobs:
   build_and_deploy:
@@ -43,6 +39,14 @@ jobs:
     environment:
       name: ${{ inputs.environment }}
     steps:
+      - name: Set latest version output
+        id: set_version
+        run: echo "latest_version=${{ inputs.versionToBuild }}" >> $GITHUB_OUTPUT
+
+      - name: Store repo token as output
+        id: set_token
+        run: echo "repo_token=${{ secrets.REPO_TOKEN }}" >> $GITHUB_OUTPUT
+
       - name: check out repository for actions
         uses: actions/checkout@v4
 
