@@ -39,6 +39,7 @@ jobs:
         OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
     outputs:
       latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
+      token: ${{ secrets.REPO_READ_TOKEN }}
   
   prod-web-deploy:
     needs: qa-web-deploy
@@ -46,4 +47,4 @@ jobs:
     uses: ./.github/workflows/prod_web_deploy.yml
     with:
       latest_version: ${{ needs.qa-web-deploy.outputs.latest_version }}
-      token: ${{ secrets.REPO_READ_TOKEN }}
+      token: ${{ needs.qa-web-deploy.outputs.token }}

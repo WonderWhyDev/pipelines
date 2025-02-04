@@ -40,6 +40,7 @@ jobs:
         DOMAIN_NAME: test1
     outputs:
       latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
+      token: ${{ secrets.REPO_READ_TOKEN }}
 
   prod-web-deploy:
     needs: qa-nginx-deploy
@@ -47,4 +48,4 @@ jobs:
     uses: ./.github/workflows/prod_nginx_deploy.yml
     with:
       latest_version: ${{ needs.qa-nginx-deploy.outputs.latest_version }}
-      token: ${{ secrets.REPO_READ_TOKEN }}
+      token: ${{ needs.qa-nginx-deploy.outputs.token }}
