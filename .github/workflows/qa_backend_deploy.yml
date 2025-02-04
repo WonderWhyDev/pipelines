@@ -83,8 +83,6 @@ jobs:
     needs: validate_backend
     if: ${{ inputs.environment == 'prod' }}
     environment: magnum
-    inputs:
-      latest_version: ${{ needs.validate_backend.outputs.latest_version }}
     steps:
       - name: check out repository for actions
         uses: actions/checkout@v4
@@ -96,7 +94,7 @@ jobs:
           token: ${{ secrets.REPO_READ_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
-          ref:  ${{ inputs.latest_version }}
+          ref:  ${{ needs.validate_backend.outputs.latest_version }}
 
       - uses: actions/setup-node@v3
         with:
@@ -112,7 +110,7 @@ jobs:
           yarn b build
       - uses: ./.github/actions/upload_version_file
         with:
-          version: ${{ inputs.latest_version }}
+          version: ${{ needs.validate_backend.outputs.latest_version }}
       - run: |
           mkdir backend
           cp -r wonderWhy/backend/prisma backend/
