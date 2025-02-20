@@ -37,10 +37,10 @@ jobs:
       - run: |
           cd wonderWhy
           yarn install
+          yarn b prismaUp
           yarn b format
           yarn b lint
           yarn b build
-#          yarn b testOnce
       - uses: ./.github/actions/upload_version_file
         with:
           version: ${{ needs.find_latest_version.outputs.latest_version }}
