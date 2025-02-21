@@ -61,7 +61,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.24.5
+          flutter-version: latest
 
       - uses: actions/setup-node@v3
         with:
