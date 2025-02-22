@@ -82,7 +82,7 @@ jobs:
           cd wonderWhy/flutterFlow/magnum
           flutter clean
           flutter pub get         
-          flutter build web --release --web-renderer=html  --source-maps
+          flutter build web --release --source-maps
           rm -rf build/web/canvaskit
           mv build/web ../../webDeploy/
           mv ../../webDeploy/web ../../webDeploy/ffWeb
