@@ -20,7 +20,7 @@ jobs:
     secrets:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
-  build_and_deploy:
+  qa_nginx_deploy:
     runs-on: ubuntu-latest
     needs: find_latest_version
     outputs:
@@ -68,7 +68,7 @@ jobs:
 
   prod-nginx-deploy:
     runs-on: ubuntu-latest
-    needs: qa-nginx-deploy
+    needs: qa_nginx_deploy
     if: ${{ inputs.environment == 'prod' }}
     environment: magnum
     steps:
@@ -84,7 +84,7 @@ jobs:
           fetch-depth: 1
           sparse-checkout: 'nginx'
           sparse-checkout-cone-mode: false
-          ref :  ${{ needs.qa-nginx-deploy.outputs.latest_version }}
+          ref :  ${{ needs.qa_nginx_deploy.outputs.latest_version }}
 
       - run: |
           cd wonderWhy
