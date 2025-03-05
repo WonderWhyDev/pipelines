@@ -126,7 +126,9 @@ jobs:
                 "appBackendDomain": "'"$BACKEND_DOMAIN"'",
                 "clientId": "'"${{ secrets.OAUTH_CLIENT_ID }}"'",
                 "redirectUrl": "'"$REDIRECT_URL"'",
-                "isDebugAllowed": true
+                "isDebugAllowed": true,
+                "mobileRedirectUrl":"magnum://wondermove.in/mobileDashboard",
+                "mobileAppClientId":"'"${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}"'"
               }' > ~/nginx/config/config.json
              echo "config.json file created"
              
