@@ -3,11 +3,20 @@ run-name: Certs Generation
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment Environment"
+        required: true
+        default: "qa"
+        type: choice
+        options:
+          - qa
+          - magnum
 
 jobs:
   generate-certificate:
     runs-on: ubuntu-latest
-    environment: qa
+    environment: ${{ inputs.environment }}
     
     steps:
     - uses: actions/checkout@v2
@@ -32,8 +41,8 @@ jobs:
           --agree-tos \
           --non-interactive \
           --dns-route53-propagation-seconds 60 \
-          -d test1.wondermove.in \
-          -d auth.test1.wondermove.in \
+          -d ${{ secrets.DOMAIN_NAME }}.wondermove.in \
+          -d auth.${{ secrets.DOMAIN_NAME }}.wondermove.in \
           --email thinker@wonderwhy.in \
           --config-dir ./ \
           --work-dir ./ \
@@ -51,7 +60,7 @@ jobs:
 
     - name: Update Security Group
       run: |
-        SECURITY_GROUP_ID="sg-0c78d4025e3337f81"
+        SECURITY_GROUP_ID="${{ secrets.SECURITY_GROUP_ID }}"
         IP_ADDRESS=${{ env.IP_ADDRESS }}
         aws ec2 authorize-security-group-ingress \
           --group-id $SECURITY_GROUP_ID \
@@ -76,8 +85,8 @@ jobs:
         
     - name: Clone Secrets to EC2
       run: |
-        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/test1.wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
-        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/test1.wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
+        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/${{ secrets.DOMAIN_NAME }}.wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
+        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/${{ secrets.DOMAIN_NAME }}.wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
 
 
     - name: Remove Added Security Group Rule
