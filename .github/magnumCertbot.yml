@@ -1,0 +1,89 @@
+name: Generate SSL Certificate for magnum
+
+on:
+ workflow_dispatch:
+
+jobs:
+
+  generate-certificate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Configure AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.MAGNUM_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.MAGNUM_AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+        
+    - name: Install Certbot
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y certbot python3-certbot-dns-route53
+        
+    - name: Generate SSL Certificate
+      continue-on-error: true
+      run: |
+        certbot certonly \
+          --dns-route53 \
+          --agree-tos \
+          --non-interactive \
+          --dns-route53-propagation-seconds 60 \
+          -d magnum.wondermove.in \
+          -d auth.magnum.wondermove.in \
+          --email thinker@wonderwhy.in \
+          --config-dir ./ \
+          --work-dir ./ \
+          --logs-dir /tmp
+
+    - name: Get Runner IP
+      run: |
+        IP_ADDRESS=$(curl -s https://api.ipify.org)
+        echo "IP_ADDRESS=$IP_ADDRESS" >> $GITHUB_ENV
+
+
+    - name: Set Variables
+      run: echo "ELASTIC_IP=ec2-user@52.4.164.231" >> $GITHUB_ENV
+
+
+    - name: Update Security Group
+      run: |
+        SECURITY_GROUP_ID="sg-0109e0cf4e941e2f5"
+        IP_ADDRESS=${{ env.IP_ADDRESS }}
+        aws ec2 authorize-security-group-ingress \
+          --group-id $SECURITY_GROUP_ID \
+          --protocol tcp \
+          --port 22 \
+          --cidr ${IP_ADDRESS}/32
+          
+    - name: Setup SSH Key
+      env:
+        SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+      run: |
+        echo "$SSH_PRIVATE_KEY_FOR_EC2" > SSH_PRIVATE_KEY_FOR_EC2.pem
+        chmod 600 SSH_PRIVATE_KEY_FOR_EC2.pem
+
+    - name: Add remote host to known_hosts # Add this to Startup Scripts on Terraform
+      run: |
+        ls
+        mkdir -p ~/.ssh
+        ssh-keyscan -H 52.4.164.231 >> ~/.ssh/known_hosts
+
+
+        
+    - name: Clone Secrets to EC2
+      run: |
+        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/wonderMoveDeploy/wonderMoveDeploy/live/magnum.wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/wonderWhy/nginx/certs
+        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/wonderMoveDeploy/wonderMoveDeploy/live/magnum.wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/wonderWhy/nginx/certs
+
+
+    - name: Remove Added Security Group Rule
+      run: |
+        SECURITY_GROUP_ID="sg-0109e0cf4e941e2f5"
+        aws ec2 revoke-security-group-ingress \
+          --group-id $SECURITY_GROUP_ID \
+          --protocol tcp \
+          --port 22 \
+          --cidr ${IP_ADDRESS}/32
