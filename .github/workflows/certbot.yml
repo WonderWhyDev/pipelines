@@ -7,8 +7,8 @@ on:
 jobs:
   generate-certificate:
     runs-on: ubuntu-latest
-    with:
-      environment: qa
+    environment: qa
+    
     steps:
     - uses: actions/checkout@v2
     
