@@ -79,6 +79,11 @@ jobs:
           mkdir webDeploy
           mv web/dist webDeploy/reactWeb
 
+      - name: build wondermove site
+        run: |
+          cd wonderWhy
+          cp -rf wondermoveSite ../../webDeploy/
+
       - name: build flutter flow web
         run: |
           cd wonderWhy/flutterFlow/magnum
@@ -117,8 +122,10 @@ jobs:
              mkdir ~/nginx/html
              mkdir ~/nginx/flutterflow
              mkdir ~/nginx/config
+             mkdir ~/nginx/wondermoveSite
              cp -r ffWeb/* ~/nginx/flutterflow/
              cp -r reactWeb/* ~/nginx/html/
+             cp -r wondermoveSite/* ~/nginx/wondermoveSite/
              echo "completed copying files"
              BASE_DOMAIN=$(echo "$AUTH_DOMAIN" | sed 's/^auth\.//')
              BACKEND_DOMAIN="https://$BASE_DOMAIN"

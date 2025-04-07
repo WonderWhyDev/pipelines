@@ -41,6 +41,7 @@ jobs:
           --agree-tos \
           --non-interactive \
           --dns-route53-propagation-seconds 60 \
+          -d wondermove.in \
           -d ${{ secrets.DOMAIN_NAME }}.wondermove.in \
           -d auth.${{ secrets.DOMAIN_NAME }}.wondermove.in \
           --email thinker@wonderwhy.in \
@@ -87,7 +88,8 @@ jobs:
       run: |
         rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/${{ secrets.DOMAIN_NAME }}.wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
         rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/${{ secrets.DOMAIN_NAME }}.wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
-
+        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
+        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
 
     - name: Remove Added Security Group Rule
       run: |
