@@ -86,10 +86,12 @@ jobs:
         
     - name: Clone Secrets to EC2
       run: |
-        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/${{ secrets.DOMAIN_NAME }}.wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
-        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/${{ secrets.DOMAIN_NAME }}.wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
-        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
-        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
+        cd /home/runner/work/pipelines/pipelines/live
+        ls
+        # rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/${{ secrets.DOMAIN_NAME }}.wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
+        # rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/${{ secrets.DOMAIN_NAME }}.wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
+        # rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
+        # rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
 
     - name: Remove Added Security Group Rule
       run: |
