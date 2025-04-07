@@ -87,6 +87,7 @@ jobs:
     - name: Clone Secrets to EC2
       run: |
         ls
+        echo "Limit"
         cd /home/runner/work/pipelines/pipelines/
         ls
         # cd /home/runner/work/pipelines/pipelines/live
