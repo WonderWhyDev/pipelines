@@ -82,7 +82,7 @@ jobs:
       - name: build wondermove site
         run: |
           cd wonderWhy
-          mv wondermoveSite ../webDeploy/wondermoveSite
+          mv wondermoveSite webDeploy/wondermoveSite
 
       - name: build flutter flow web
         run: |
