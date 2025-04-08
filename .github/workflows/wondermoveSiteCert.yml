@@ -72,8 +72,8 @@ jobs:
     - name: Clone Secrets to EC2
       run: |
         # Copy certificates for wondermove.in
-        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/site/certs
-        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/site/certs
+        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' --rsync-path="sudo rsync" /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/site/certs
+        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' --rsync-path="sudo rsync" /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/site/certs
 
     - name: Remove Added Security Group Rule
       run: |
