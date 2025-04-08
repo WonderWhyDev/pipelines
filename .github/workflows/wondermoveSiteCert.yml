@@ -1,5 +1,5 @@
-name: Certs Generation
-run-name: Certs Generation
+name: wondermove site Certs Generation
+run-name: wondermove site Certs Generation
 
 on:
   workflow_dispatch:
