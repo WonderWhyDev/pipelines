@@ -56,8 +56,11 @@ jobs:
           cd wonderWhy
           ls -lsh
           mkdir -p nginx/certs
+          mkdir -p nginx/site/certs
           echo "${{ secrets.CA_CERTS_FULL_CHAIN }}" > nginx/certs/fullchain.pem  
           echo "${{ secrets.CA_CERTS_PRIVATE_KEY }}" > nginx/certs/privkey.pem 
+          echo "${{ secrets.WEBSITE_CERT_FULL_CHAIN }}" > nginx/site/certs/fullchain.pem
+          echo "${{ secrets.WEBSITE_CERT_PREV_KEY }}" > nginx/site/certs/privkey.pem 
           zip -r nginx.zip nginx
 
       - uses: ./.github/actions/copy_to_ec2
