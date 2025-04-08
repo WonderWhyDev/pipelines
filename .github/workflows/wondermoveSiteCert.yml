@@ -7,6 +7,7 @@ on:
 jobs:
   generate-certificate:
     runs-on: ubuntu-latest
+    environment: 'magnum'
     
     steps:
     - uses: actions/checkout@v2
