@@ -1,5 +1,7 @@
 name: FlutterFlow - Mobile App Release
+
 run-name: ${{ github.actor }} - ${{ github.event.head_commit.message }} - Manual Build Triggered
+
 on:
   workflow_dispatch:
     inputs:
@@ -8,18 +10,20 @@ on:
         required: true
         type: choice
         options:
-          - major
-          - minor
+          - build
           - patch
-        default: 'patch'
+          - minor
+          - major
+        default: 'build'
 
 jobs:
+
   FlutterFlow:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
-      
+
       - name: Set up Flutter SDK
         uses: subosito/flutter-action@v2
 
@@ -46,18 +50,27 @@ jobs:
               NEW_MINOR=0
               NEW_PATCH=0
               ;;
+
             "minor")
               NEW_MAJOR=$MAJOR
               NEW_MINOR=$((MINOR + 1))
               NEW_PATCH=0
               ;;
+
             "patch")
               NEW_MAJOR=$MAJOR
               NEW_MINOR=$MINOR
               NEW_PATCH=$((PATCH + 1))
               ;;
+
+            "build")
+              NEW_MAJOR=$MAJOR
+              NEW_MINOR=$MINOR
+              NEW_PATCH=$PATCH
+              NEW_BUILD=$((BUILD + 1))
+              ;;
+
           esac
-          
           NEW_VERSION="$NEW_MAJOR.$NEW_MINOR.$NEW_PATCH+$NEW_BUILD"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
@@ -79,7 +92,7 @@ jobs:
           git add flutterFlow/magnum_mobile/pubspec.yaml
           git commit -m "changed version to ${{ steps.increment_version.outputs.new_version }}"
           git push
-      
+
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
@@ -93,5 +106,7 @@ jobs:
             - Built by: ${{ github.actor }}
           files: |
             flutterFlow/magnum_mobile/build/app/outputs/flutter-apk/app-release.apk
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
