@@ -23,7 +23,7 @@ jobs:
 
     environment:
       name: qa
-      
+
     steps:
       - name: Checkout current repo (for gh release)
         uses: actions/checkout@v4
@@ -46,13 +46,6 @@ jobs:
 
       - name: Install GitHub CLI
         run: sudo apt-get install gh
-
-      - name: Debug GH Auth and Releases
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh auth status
-          gh release list
 
       - name: Get latest release version or set to default
         id: version
