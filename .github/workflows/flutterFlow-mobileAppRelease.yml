@@ -20,9 +20,16 @@ jobs:
 
   FlutterFlow:
     runs-on: ubuntu-latest
+
     environment:
       name: qa
+      
     steps:
+      - name: Checkout current repo (for gh release)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Check out wonderwhy folder
         uses: actions/checkout@v4
         with:
