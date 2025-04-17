@@ -1,6 +1,6 @@
 name: FlutterFlow - Mobile App Release
 
-run-name: ${{ github.actor }} - ${{ github.event.head_commit.message }} - Manual Build Triggered
+run-name: ${{ github.actor }} - Manual Build Triggered
 
 on:
   workflow_dispatch:
@@ -37,30 +37,30 @@ jobs:
           channel: stable
           flutter-version: 3.29.0
 
-      - name: List files
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "Directory contents:"
-          ls -la
-          echo "wonderWhy directory contents:"
-          ls -la wonderWhy/
-          echo "wonderWhy/flutterFlow directory contents:"
-          ls -la wonderWhy/flutterFlow/
-          echo "wonderWhy/flutterFlow/magnum_mobile directory contents:"
-          ls -la wonderWhy/flutterFlow/magnum_mobile/
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh
 
-      - name: Get current version
+      - name: Get latest release version or set to default
         id: version
         run: |
-          cd wonderWhy/flutterFlow/magnum_mobile
-          VERSION=$(grep 'version:' pubspec.yaml | cut -d' ' -f2)
+          # Try to get the latest tag from releases
+          LATEST_TAG=$(gh release view --json tagName -q ".tagName" || echo "v0.0.0")
+          
+          # If no tags exist (first time run), set default version
+          if [ "$LATEST_TAG" == "v0.0.0" ]; then
+            VERSION="1.0.0+1"  # Default version if no releases exist
+            echo "No previous release found. Using default version: $VERSION"
+          else
+            VERSION=${LATEST_TAG#v}  # Remove the 'v' prefix
+            echo "current_version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Latest version from release: $VERSION"
+          fi
+
           echo "current_version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $VERSION"
 
       - name: Increment version number
         id: increment_version
         run: |
-          cd wonderWhy/flutterFlow/magnum_mobile
           VERSION=${{ steps.version.outputs.current_version }}
           MAJOR=$(echo $VERSION | cut -d. -f1)
           MINOR=$(echo $VERSION | cut -d. -f2)
@@ -98,9 +98,6 @@ jobs:
           NEW_VERSION="$NEW_MAJOR.$NEW_MINOR.$NEW_PATCH+$NEW_BUILD"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
-          
-          # Update pubspec.yaml
-          sed -i "s/version: $VERSION/version: $NEW_VERSION/" pubspec.yaml
 
       - name: Build APK in --release mode
         run: |
@@ -108,14 +105,6 @@ jobs:
           flutter clean
           flutter pub get
           flutter build apk --release
-
-      - name: Commit and push updated version in pubspec.yaml
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add wonderWhy/flutterFlow/magnum_mobile/pubspec.yaml
-          git commit -m "changed version to ${{ steps.increment_version.outputs.new_version }}"
-          git push
 
       - name: Create Release
         id: create_release
@@ -133,4 +122,3 @@ jobs:
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
