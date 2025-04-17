@@ -42,6 +42,8 @@ jobs:
 
       - name: Get latest release version or set to default
         id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Try to get the latest tag from releases
           LATEST_TAG=$(gh release view --json tagName -q ".tagName" || echo "v0.0.0")
