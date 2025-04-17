@@ -30,6 +30,7 @@ jobs:
       - name: Get current version
         id: version
         run: |
+          cd flutterFlow/magnum_mobile
           VERSION=$(grep 'version:' flutterFlow/magnum_mobile/pubspec.yaml | cut -d' ' -f2)
           echo "current_version=$VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $VERSION"
