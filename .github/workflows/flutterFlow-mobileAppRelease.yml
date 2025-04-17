@@ -45,6 +45,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          cd wonderWhy
           # Try to get the latest tag from releases
           LATEST_TAG=$(gh release view --json tagName -q ".tagName" || echo "v0.0.0")
           
