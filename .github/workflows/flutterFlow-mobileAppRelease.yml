@@ -23,14 +23,9 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
-      
-      - name: Check out only wonderWhy folder
-        uses: actions/checkout@v4
         with:
-          repository: WonderWhyDev/wonderWhy
-          token: ${{ secrets.REPO_READ_TOKEN }}
-          path: wonderWhy
-          fetch-depth: 1
+          fetch-depth: 0
+          submodules: true
 
       - name: Set up Flutter SDK
         uses: subosito/flutter-action@v2
@@ -40,15 +35,17 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Directory contents:"
           ls -la
-          echo "flutterFlow directory contents:"
-          ls -la flutterFlow/
-          echo "flutterFlow/magnum_mobile directory contents:"
-          ls -la flutterFlow/magnum_mobile/
+          echo "wonderWhy directory contents:"
+          ls -la wonderWhy/
+          echo "wonderWhy/flutterFlow directory contents:"
+          ls -la wonderWhy/flutterFlow/
+          echo "wonderWhy/flutterFlow/magnum_mobile directory contents:"
+          ls -la wonderWhy/flutterFlow/magnum_mobile/
 
       - name: Get current version
         id: version
         run: |
-          cd flutterFlow/magnum_mobile
+          cd wonderWhy/flutterFlow/magnum_mobile
           VERSION=$(grep 'version:' pubspec.yaml | cut -d' ' -f2)
           echo "current_version=$VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $VERSION"
@@ -56,7 +53,7 @@ jobs:
       - name: Increment version number
         id: increment_version
         run: |
-          cd flutterFlow/magnum_mobile
+          cd wonderWhy/flutterFlow/magnum_mobile
           VERSION=${{ steps.version.outputs.current_version }}
           MAJOR=$(echo $VERSION | cut -d. -f1)
           MINOR=$(echo $VERSION | cut -d. -f2)
@@ -100,7 +97,7 @@ jobs:
 
       - name: Build APK in --release mode
         run: |
-          cd flutterFlow/magnum_mobile
+          cd wonderWhy/flutterFlow/magnum_mobile
           flutter clean
           flutter pub get
           flutter build apk --release
@@ -109,7 +106,7 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add flutterFlow/magnum_mobile/pubspec.yaml
+          git add wonderWhy/flutterFlow/magnum_mobile/pubspec.yaml
           git commit -m "changed version to ${{ steps.increment_version.outputs.new_version }}"
           git push
 
@@ -125,7 +122,7 @@ jobs:
             - Built from commit: ${{ github.sha }}
             - Built by: ${{ github.actor }}
           files: |
-            flutterFlow/magnum_mobile/build/app/outputs/flutter-apk/app-release.apk
+            wonderWhy/flutterFlow/magnum_mobile/build/app/outputs/flutter-apk/app-release.apk
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
