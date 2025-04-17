@@ -1,0 +1,97 @@
+name: FlutterFlow - Mobile App Release
+run-name: ${{ github.actor }} - ${{ github.event.head_commit.message }} - Manual Build Triggered
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Select version number'
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+        default: 'patch'
+
+jobs:
+  FlutterFlow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+
+      - name: Get current version
+        id: version
+        run: |
+          VERSION=$(grep 'version:' flutterFlow/magnum_mobile/pubspec.yaml | cut -d' ' -f2)
+          echo "current_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+
+      - name: Increment version number
+        id: increment_version
+        run: |
+          VERSION=${{ steps.version.outputs.current_version }}
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3 | cut -d+ -f1)
+          BUILD=$(echo $VERSION | cut -d+ -f2)
+          NEW_BUILD=$((BUILD + 1))
+          
+          case "${{ github.event.inputs.version_type }}" in
+            "major")
+              NEW_MAJOR=$((MAJOR + 1))
+              NEW_MINOR=0
+              NEW_PATCH=0
+              ;;
+            "minor")
+              NEW_MAJOR=$MAJOR
+              NEW_MINOR=$((MINOR + 1))
+              NEW_PATCH=0
+              ;;
+            "patch")
+              NEW_MAJOR=$MAJOR
+              NEW_MINOR=$MINOR
+              NEW_PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="$NEW_MAJOR.$NEW_MINOR.$NEW_PATCH+$NEW_BUILD"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+          
+          # Update pubspec.yaml
+          sed -i "s/version: $VERSION/version: $NEW_VERSION/" flutterFlow/magnum_mobile/pubspec.yaml
+
+      - name: Build APK in --release mode
+        run: |
+          cd flutterFlow/magnum_mobile
+          flutter clean
+          flutter pub get
+          flutter build apk --release
+
+      - name: Commit and push updated version in pubspec.yaml
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add flutterFlow/magnum_mobile/pubspec.yaml
+          git commit -m "changed version to ${{ steps.increment_version.outputs.new_version }}"
+          git push
+      
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.increment_version.outputs.new_version }}
+          name: Release v${{ steps.increment_version.outputs.new_version }}
+          body: |
+            Release v${{ steps.increment_version.outputs.new_version }}
+            - Version type: ${{ github.event.inputs.version_type }}
+            - Built from commit: ${{ github.sha }}
+            - Built by: ${{ github.actor }}
+          files: |
+            flutterFlow/magnum_mobile/build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
