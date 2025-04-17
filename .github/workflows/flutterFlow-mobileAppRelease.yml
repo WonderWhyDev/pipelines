@@ -40,10 +40,17 @@ jobs:
       - name: Install GitHub CLI
         run: sudo apt-get install gh
 
+      - name: Debug GH Auth and Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh auth status
+          gh release list
+
       - name: Get latest release version or set to default
         id: version
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           LATEST_TAG=$(gh release view --json tagName -q ".tagName" || echo "v0.0.0")
           
