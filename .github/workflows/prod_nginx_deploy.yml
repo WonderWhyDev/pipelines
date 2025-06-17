@@ -1,17 +1,21 @@
 name: Magnum Nginx Deploy
 run-name: Magnum Nginx Deploy
 on:
-  workflow_call:
-    inputs:
-      latest_version:
-        required: true
-        type: string
+  workflow_dispatch:
 
 jobs:
+  find_latest_version:
+    uses: ./.github/workflows/base_get_latest_repo_version.yml
+    with:
+      environment: magnum
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+
   magnum-nginx-deploy:
+    needs: find_latest_version
     uses: ./.github/workflows/base_nginx_deploy.yml
     with:
-      versionToBuild: ${{ inputs.latest_version }}
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
       environment: magnum
     secrets:
         REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
