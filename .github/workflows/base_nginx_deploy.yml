@@ -57,6 +57,7 @@ jobs:
           ls -lsh
           mkdir -p nginx/certs
           mkdir -p nginx/site/certs
+          mkdir -p nginx/tenantApps/certs
           echo "${{ secrets.CA_CERTS_FULL_CHAIN }}" > nginx/certs/fullchain.pem  
           echo "${{ secrets.CA_CERTS_PRIVATE_KEY }}" > nginx/certs/privkey.pem 
           echo "${{ secrets.WEBSITE_CERT_FULL_CHAIN }}" > nginx/site/certs/fullchain.pem
