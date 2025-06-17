@@ -1,5 +1,5 @@
-name: Certs Generation - Magnum
-run-name: Certs Generation - Magnum
+name: Certs Generation - tenantApps
+run-name: Certs Generation - tenantApps
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
 jobs:
   generate-certificate:
     runs-on: ubuntu-latest
-    environment: qa
+    environment: 'magnum'
     
     steps:
     - uses: actions/checkout@v2
@@ -32,8 +32,7 @@ jobs:
           --agree-tos \
           --non-interactive \
           --dns-route53-propagation-seconds 60 \
-          -d test1.wondermove.in \
-          -d auth.test1.wondermove.in \
+          -d app.wondermove.in \
           --email thinker@wonderwhy.in \
           --config-dir ./ \
           --work-dir ./ \
@@ -76,8 +75,8 @@ jobs:
         
     - name: Clone Secrets to EC2
       run: |
-        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' --rsync-path="sudo rsync" /home/runner/work/pipelines/pipelines/live/magnum.wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
-        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' --rsync-path="sudo rsync" /home/runner/work/pipelines/pipelines/live/magnum.wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/certs
+        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' --rsync-path="sudo rsync" /home/runner/work/pipelines/pipelines/live/magnum.wondermove.in/fullchain.pem  ${{ env.ELASTIC_IP }}:~/nginx/tenantApps/certs
+        rsync -avzL  -e 'ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem -o StrictHostKeyChecking=no' --rsync-path="sudo rsync" /home/runner/work/pipelines/pipelines/live/magnum.wondermove.in/privkey.pem  ${{ env.ELASTIC_IP }}:~/nginx/tenantApps/certs
 
 
     - name: Remove Added Security Group Rule
