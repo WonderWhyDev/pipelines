@@ -50,7 +50,7 @@ jobs:
 
     - name: Update Security Group
       run: |
-        SECURITY_GROUP_ID="sg-0c78d4025e3337f81"
+        SECURITY_GROUP_ID="${{ secrets.SECURITY_GROUP_ID }}"
         IP_ADDRESS=${{ env.IP_ADDRESS }}
         aws ec2 authorize-security-group-ingress \
           --group-id $SECURITY_GROUP_ID \
