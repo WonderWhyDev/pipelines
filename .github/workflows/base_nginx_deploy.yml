@@ -60,7 +60,9 @@ jobs:
           echo "${{ secrets.CA_CERTS_FULL_CHAIN }}" > nginx/certs/fullchain.pem  
           echo "${{ secrets.CA_CERTS_PRIVATE_KEY }}" > nginx/certs/privkey.pem 
           echo "${{ secrets.WEBSITE_CERT_FULL_CHAIN }}" > nginx/site/certs/fullchain.pem
-          echo "${{ secrets.WEBSITE_CERT_PREV_KEY }}" > nginx/site/certs/privkey.pem 
+          echo "${{ secrets.WEBSITE_CERT_PREV_KEY }}" > nginx/site/certs/privkey.pem
+          echo "${{ secrets.CERT_FULL_CHAIN_TENANT }}" > nginx/tenantApps/certs/fullchain.pem
+          echo "${{ secrets.CERT_PREV_KEY_TENANT }}" > nginx/tenantApps/certs/privkey.pem
           zip -r nginx.zip nginx
 
       - uses: ./.github/actions/copy_to_ec2
