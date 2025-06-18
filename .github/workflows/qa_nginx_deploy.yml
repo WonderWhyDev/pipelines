@@ -23,89 +23,49 @@ jobs:
   qa_nginx_deploy:
     runs-on: ubuntu-latest
     needs: find_latest_version
-    outputs:
-      latest_version: ${{ steps.set_version.outputs.latest_version }}
-    environment: qa
-    steps:
-      - name: check out repository for actions
-        uses: actions/checkout@v4
-
-      - name: Check out only nginx folder
-        uses: actions/checkout@v4
-        with:
-          repository: WonderWhyDev/wonderWhy
-          token: ${{ secrets.REPO_READ_TOKEN }}
-          path: wonderWhy
-          fetch-depth: 1
-          sparse-checkout: 'nginx'
-          sparse-checkout-cone-mode: false
-          ref :  ${{ needs.find_latest_version.outputs.latest_version }}
-
-      - run: |
-          sed -i 's|name: wonderwhy_postgres-network|name: wonderwhy-network|' wonderWhy/nginx/compose.yml
-          cd wonderWhy
-          ls -lsh
-          mkdir -p nginx/certs
-          echo "${{ secrets.CA_CERTS_FULL_CHAIN }}" > nginx/certs/fullchain.pem  
-          echo "${{ secrets.CA_CERTS_PRIVATE_KEY }}" > nginx/certs/privkey.pem
-          zip -r nginx.zip nginx
-
-      - uses: ./.github/actions/copy_to_ec2
-        with:
-           ec2IP: ${{ secrets.EC2_IP }}
-           awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
-           awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
-           awsRegion: ${{ secrets.AWS_REGION }}
-           ec2User: ${{ secrets.EC2_USER }}
-           securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
-           sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-           fileToCopy: ./wonderWhy/nginx.zip
-           destination: ~/nginx.zip
-           unzipDestination: ~/
-           runScript: |
-             cd nginx
-             sh deploy.sh ${{ secrets.DOMAIN_NAME }}
+    if: ${{ inputs.environment == 'qa' }}
+    uses: ./.github/workflows/base_nginx_deploy.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: qa
+    secrets:
+        REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+        EC2_IP: ${{ secrets.EC2_IP }}
+        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        EC2_USER: ${{ secrets.EC2_USER }}
+        SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
+        SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+        CA_CERTS_FULL_CHAIN: ${{ secrets.CA_CERTS_FULL_CHAIN }}
+        CA_CERTS_PRIVATE_KEY: ${{ secrets.CA_CERTS_PRIVATE_KEY }}
+        WEBSITE_CERT_FULL_CHAIN: ${{ secrets.WEBSITE_CERT_FULL_CHAIN }}
+        WEBSITE_CERT_PREV_KEY: ${{ secrets.WEBSITE_CERT_PREV_KEY }}
+        CERT_FULL_CHAIN_TENANT: ${{ secrets.CERT_FULL_CHAIN_TENANT }}
+        CERT_PREV_KEY_TENANT: ${{ secrets.CERT_PREV_KEY_TENANT }}
+        DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
 
   prod-nginx-deploy:
     runs-on: ubuntu-latest
     needs: qa_nginx_deploy
     if: ${{ inputs.environment == 'prod' }}
-    environment: magnum
-    steps:
-      - name: check out repository for actions
-        uses: actions/checkout@v4
-
-      - name: Check out only nginx folder
-        uses: actions/checkout@v4
-        with:
-          repository: WonderWhyDev/wonderWhy
-          token: ${{ secrets.REPO_READ_TOKEN }}
-          path: wonderWhy
-          fetch-depth: 1
-          sparse-checkout: 'nginx'
-          sparse-checkout-cone-mode: false
-          ref :  ${{ needs.qa_nginx_deploy.outputs.latest_version }}
-
-      - run: |
-          cd wonderWhy
-          ls -lsh
-          mkdir -p nginx/certs
-          echo "${{ secrets.CA_CERTS_FULL_CHAIN }}" > nginx/certs/fullchain.pem  
-          echo "${{ secrets.CA_CERTS_PRIVATE_KEY }}" > nginx/certs/privkey.pem
-          zip -r nginx.zip nginx
-
-      - uses: ./.github/actions/copy_to_ec2
-        with:
-           ec2IP: ${{ secrets.EC2_IP }}
-           awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
-           awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
-           awsRegion: ${{ secrets.AWS_REGION }}
-           ec2User: ${{ secrets.EC2_USER }}
-           securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
-           sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-           fileToCopy: ./wonderWhy/nginx.zip
-           destination: ~/nginx.zip
-           unzipDestination: ~/
-           runScript: |
-             cd nginx
-             sh deploy.sh ${{ secrets.DOMAIN_NAME }}
+    uses: ./.github/workflows/base_nginx_deploy.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: magnum
+    secrets:
+        REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+        EC2_IP: ${{ secrets.EC2_IP }}
+        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        EC2_USER: ${{ secrets.EC2_USER }}
+        SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
+        SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+        CA_CERTS_FULL_CHAIN: ${{ secrets.CA_CERTS_FULL_CHAIN }}
+        CA_CERTS_PRIVATE_KEY: ${{ secrets.CA_CERTS_PRIVATE_KEY }}
+        WEBSITE_CERT_FULL_CHAIN: ${{ secrets.WEBSITE_CERT_FULL_CHAIN }}
+        WEBSITE_CERT_PREV_KEY: ${{ secrets.WEBSITE_CERT_PREV_KEY }}
+        CERT_FULL_CHAIN_TENANT: ${{ secrets.CERT_FULL_CHAIN_TENANT }}
+        CERT_PREV_KEY_TENANT: ${{ secrets.CERT_PREV_KEY_TENANT }}
+        DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
