@@ -48,5 +48,5 @@ jobs:
     needs: find_latest_version
     if: ${{ inputs.environment == 'prod' }}
     uses: ./.github/workflows/prod_nginx_deploy.yml
-    inputs:
+    with:
       latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
