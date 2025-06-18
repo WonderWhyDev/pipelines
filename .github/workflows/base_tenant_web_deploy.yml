@@ -1,0 +1,143 @@
+name: Base TENANT Flutter Web Deploy
+on:
+  workflow_call:
+    inputs:
+      versionToBuild:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+    secrets:
+        REPO_TOKEN:
+            required: true
+        EC2_IP:
+            required: true
+        AWS_ACCESS_KEY:
+            required: true
+        AWS_SECRET_KEY:
+            required: true
+        AWS_REGION:
+            required: true
+        EC2_USER:
+            required: true
+        SECURITY_GROUP_ID:
+            required: true
+        SSH_PRIVATE_KEY_FOR_EC2:
+            required: true
+        OAUTH_CLIENT_ID:
+            required: true
+        OAUTH_CLIENT_SECRET:
+            required: true
+        OAUTH_MOBILE_APP_CLIENT_ID:
+            required: true
+    outputs:
+      latest_version: 
+        value: ${{ jobs.build_and_deploy.outputs.latest_version }}
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    outputs:
+      latest_version: ${{ steps.set_version.outputs.latest_version }}
+    steps:
+      - name: Set latest version output
+        id: set_version
+        run: echo "latest_version=${{ inputs.versionToBuild }}" >> $GITHUB_OUTPUT
+
+      - name: check out repository for actions
+        uses: actions/checkout@v4
+
+      - name: Check out application code
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          ref :  ${{ inputs.versionToBuild }}
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.29.0
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: 'wonderWhy/yarn.lock'
+
+      - name: build react web
+        run: |
+          cd wonderWhy
+          yarn install
+          yarn workspace web build
+          mkdir webDeploy
+          mv web/dist webDeploy/reactWeb
+
+      - name: build wondermove site
+        run: |
+          cd wonderWhy
+          mv wondermoveSite webDeploy/wondermoveSite
+
+      - name: build flutter flow web
+        run: |
+          cd wonderWhy/flutterFlow/magnum
+          flutter clean
+          flutter pub get         
+          flutter build web --release --source-maps
+          rm -rf build/web/canvaskit
+          mv build/web ../../webDeploy/
+          mv ../../webDeploy/web ../../webDeploy/ffWeb
+
+      - name: Brotli compress
+        run: |
+          cd wonderWhy/webDeploy
+          sudo apt-get  -y install brotli
+          find ./ -type f -exec brotli -Zkv {} \;
+
+      - run: |
+          cd wonderWhy
+          zip -r webDeploy.zip webDeploy
+
+      - uses: ./.github/actions/copy_to_ec2
+        with:
+           ec2IP: ${{ secrets.EC2_IP }}
+           awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+           awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+           awsRegion: ${{ secrets.AWS_REGION }}
+           ec2User: ${{ secrets.EC2_USER }}
+           securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+           sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+           fileToCopy: ./wonderWhy/webDeploy.zip
+           destination: ~/webDeploy.zip
+           unzipDestination: ~/tenantApps
+           runScript: |
+             cd webDeploy
+             sudo rm -rf ~/nginx/tenantApps/html
+             mkdir ~/nginx/tenantApps/html
+             mkdir ~/nginx/tenantApps/flutterflow
+             mkdir ~/nginx/tenantApps/config
+             cp -r tenantApps/ffWeb/* ~/nginx/tenantApps/flutterflow/
+             cp -r tenantApps/reactWeb/* ~/nginx/tenantApps/html/
+             echo "completed copying files"
+             BASE_DOMAIN=$(echo "$AUTH_DOMAIN" | sed 's/^auth\.//')
+             BACKEND_DOMAIN="https://$BASE_DOMAIN"
+             REDIRECT_URL="https://$BASE_DOMAIN"
+             echo '{
+                "authDomain": "'"https://$AUTH_DOMAIN"'",
+                "appBackendDomain": "'"$BACKEND_DOMAIN"'",
+                "clientId": "'"${{ secrets.OAUTH_CLIENT_ID }}"'",
+                "redirectUrl": "'"$REDIRECT_URL"'",
+                "isDebugAllowed": true,
+                "mobileRedirectUrl":"magnum://wondermove.in/mobileDashboard",
+                "mobileAppClientId":"'"${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}"'"
+              }' > ~/nginx/config/config.json
+             echo "config.json file created"
+             
+
+
