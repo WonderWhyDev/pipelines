@@ -50,3 +50,4 @@ jobs:
     uses: ./.github/workflows/prod_nginx_deploy.yml
     with:
       latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
+      repo_token: ${{ secrets.REPO_READ_TOKEN }}
