@@ -21,7 +21,6 @@ jobs:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
   qa_nginx_deploy:
-    runs-on: ubuntu-latest
     needs: find_latest_version
     if: ${{ inputs.environment == 'qa' }}
     uses: ./.github/workflows/base_nginx_deploy.yml
@@ -46,7 +45,6 @@ jobs:
         DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
 
   prod-nginx-deploy:
-    runs-on: ubuntu-latest
     needs: find_latest_version
     if: ${{ inputs.environment == 'prod' }}
     uses: ./.github/workflows/prod_nginx_deploy.yml
