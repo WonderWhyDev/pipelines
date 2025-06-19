@@ -117,7 +117,7 @@ jobs:
            destination: ~/webDeploy.zip
            unzipDestination: ~/tenantApps
            runScript: |
-             cd webDeploy
+             cd tenantApps/webDeploy
              sudo rm -rf ~/nginx/tenantApps/html
              mkdir ~/nginx/tenantApps/html
              mkdir ~/nginx/tenantApps/flutterflow
