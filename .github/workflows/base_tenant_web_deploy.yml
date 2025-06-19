@@ -122,8 +122,8 @@ jobs:
              mkdir ~/nginx/tenantApps/html
              mkdir ~/nginx/tenantApps/flutterflow
              mkdir ~/nginx/tenantApps/config
-             cp -r tenantApps/ffWeb/* ~/nginx/tenantApps/flutterflow/
-             cp -r tenantApps/reactWeb/* ~/nginx/tenantApps/html/
+             cp -r ffWeb/* ~/nginx/tenantApps/flutterflow/
+             cp -r reactWeb/* ~/nginx/tenantApps/html/
              echo "completed copying files"
              BASE_DOMAIN=$(echo "$AUTH_DOMAIN" | sed 's/^auth\.//')
              BACKEND_DOMAIN="https://$BASE_DOMAIN"
