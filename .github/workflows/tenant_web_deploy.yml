@@ -21,7 +21,7 @@ jobs:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
   qa-web-deploy:
-    uses: ./.github/workflows/base_web_deploy.yml
+    uses: ./.github/workflows/base_tenant_web_deploy.yml
     needs: find_latest_version
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
