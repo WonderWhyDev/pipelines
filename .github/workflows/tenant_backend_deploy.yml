@@ -57,7 +57,6 @@ jobs:
           version: ${{ needs.find_latest_version.outputs.latest_version }}
           env: magnum
       - run: |
-          sed -i 's|name: wonderwhy_postgres-network|name: wonderwhy-network|' wonderWhy/backend/deploy/compose.yml
           mkdir backend
           cp -r wonderWhy/backend/prisma backend/
           cp -r wonderWhy/backend/prisma/schema/base.prisma backend/prisma/
