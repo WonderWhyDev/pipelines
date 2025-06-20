@@ -16,7 +16,7 @@ jobs:
   find_latest_version:
     uses: ./.github/workflows/base_get_latest_repo_version.yml
     with:
-      environment: qa
+      environment: magnum
     secrets:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
@@ -25,7 +25,7 @@ jobs:
     needs: find_latest_version
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
-      environment: qa
+      environment: magnum
     secrets:
         REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
         EC2_IP: ${{ secrets.EC2_IP }}
