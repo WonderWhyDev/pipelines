@@ -125,18 +125,17 @@ jobs:
              cp -r ffWeb/* ~/nginx/tenantApps/flutterflow/
              cp -r reactWeb/* ~/nginx/tenantApps/html/
              echo "completed copying files"
-             BASE_DOMAIN=$(echo "$AUTH_DOMAIN" | sed 's/^auth\.//')
-             BACKEND_DOMAIN="https://$BASE_DOMAIN"
-             REDIRECT_URL="https://$BASE_DOMAIN"
+             BACKEND_DOMAIN="https://$TENANTAPP_BASE_DOMAIN"
+             REDIRECT_URL="https://$TENANTAPP_BASE_DOMAIN"
              echo '{
                 "authDomain": "'"https://$AUTH_DOMAIN"'",
                 "appBackendDomain": "'"$BACKEND_DOMAIN"'",
-                "clientId": "'"${{ secrets.OAUTH_CLIENT_ID }}"'",
+                "clientId": "'"${{ secrets.TENANT_OAUTH_CLIENT_ID }}"'",
                 "redirectUrl": "'"$REDIRECT_URL"'",
                 "isDebugAllowed": true,
                 "mobileRedirectUrl":"magnum://wondermove.in/mobileDashboard",
                 "mobileAppClientId":"'"${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}"'"
-              }' > ~/nginx/config/config.json
+              }' > ~/nginx/tenantApps/config/config.json
              echo "config.json file created"
              
 
