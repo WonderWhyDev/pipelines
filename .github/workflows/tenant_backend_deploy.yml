@@ -78,7 +78,6 @@ jobs:
           destination: ~/backend.zip
           unzipDestination: ~/tenantApps
           runScript: |
-            cd backend
-            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} ${{ secrets.OAUTH_CLIENT_SECRET }}  backend_tenant_app
-
+            cd tenantApps/backend
+            sh deployTenantapps.sh ${{ secrets.OAUTH_CLIENT_ID }} ${{ secrets.OAUTH_CLIENT_SECRET }}  
   
