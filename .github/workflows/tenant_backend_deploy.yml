@@ -16,7 +16,7 @@ jobs:
   find_latest_version:
     uses: ./.github/workflows/base_get_latest_repo_version.yml
     with:
-      environment: qa
+      environment: magnum
     secrets:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
@@ -26,7 +26,7 @@ jobs:
     outputs:
       latest_version: ${{ steps.set_version.outputs.latest_version }}
     environment:
-      name: qa
+      name: magnum
     steps:
       - name: check out repository for actions
         uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
       - uses: ./.github/actions/upload_version_file
         with:
           version: ${{ needs.find_latest_version.outputs.latest_version }}
-          env: qa
+          env: magnum
       - run: |
           sed -i 's|name: wonderwhy_postgres-network|name: wonderwhy-network|' wonderWhy/backend/deploy/compose.yml
           mkdir backend
