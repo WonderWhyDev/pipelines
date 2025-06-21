@@ -137,7 +137,7 @@ jobs:
                 "clientId": "'"${{ secrets.TENANT_OAUTH_CLIENT_ID }}"'",
                 "redirectUrl": "'"$REDIRECT_URL"'",
                 "isDebugAllowed": true,
-                "mobileRedirectUrl":"app://wondermove.in/mobileDashboard",
+                "mobileRedirectUrl":"magnum://wondermove.in/mobileDashboard",
                 "mobileAppClientId":"'"${{ secrets.OAUTH_TENANTAPP_MOBILE_CLIENT_ID }}"'"
               }' > ~/nginx/tenantApps/config/config.json
              echo "config.json file created"
