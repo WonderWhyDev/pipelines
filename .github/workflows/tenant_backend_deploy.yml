@@ -59,7 +59,7 @@ jobs:
       - run: |
           mkdir backend
           cp -r wonderWhy/backend/prisma backend/
-          cp -r wonderWhy/backend/prisma/schema/base.prisma backend/prisma/
+          cp -r wonderWhy/backend/prisma/migrations backend/prisma/schema/
           cp wonderWhy/backend/dist/app.js backend/
           cp wonderWhy/backend/package.json backend/
           cp wonderWhy/backend/deploy/* backend/
