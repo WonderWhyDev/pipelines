@@ -8,6 +8,7 @@ on:
         type: string
       repo_token:
         required: true
+        type: string
 
 jobs:
   magnum-nginx-deploy:
