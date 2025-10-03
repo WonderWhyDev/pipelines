@@ -32,7 +32,7 @@ jobs:
           --agree-tos \
           --non-interactive \
           --dns-route53-propagation-seconds 60 \
-          -d wondermove.in \
+          -d wondermove.in -d wonderwhy.in -d www.wondermove.in -d www.wonderwhy.in \
           --email thinker@wonderwhy.in \
           --config-dir ./ \
           --work-dir ./ \
