@@ -23,6 +23,7 @@ jobs:
   validate_backend:
     runs-on: ubuntu-latest
     needs: find_latest_version
+    if: ${{ inputs.environment == 'qa' }}
     outputs:
       latest_version: ${{ steps.set_version.outputs.latest_version }}
     environment:
