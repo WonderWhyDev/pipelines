@@ -25,7 +25,7 @@ jobs:
     needs: find_latest_version
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
-      environment: qa
+      environment: ${{ inputs.environment }}
     secrets:
         REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
         EC2_IP: ${{ secrets.EC2_IP }}
