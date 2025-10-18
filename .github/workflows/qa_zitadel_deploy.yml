@@ -10,7 +10,7 @@ on:
         type: choice
         options:
           - qa
-          - prod
+          - magnum
 
 jobs:
   find_latest_version:
