@@ -2,12 +2,21 @@ name: QA Zitadel Deploy
 run-name: QA Zitadel Deploy
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment Environment"
+        required: true
+        default: "qa"
+        type: choice
+        options:
+          - qa
+          - prod
 
 jobs:
   find_latest_version:
     uses: ./.github/workflows/base_get_latest_repo_version.yml
     with:
-      environment: qa
+      environment: ${{ inputs.environment }}
     secrets:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
