@@ -8,14 +8,11 @@ on:
 jobs:
   FlutterFlowWebBuild:
     runs-on: ubuntu-latest
-    environment: qa
+    environment: prod
     steps:
-      - name: check out repository for actions
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/upload_version_file
-        with:
-          version: success
+      - run: |
+          echo ${{ secrets.EC2_IP }}
+          ssh-keyscan -H 13.202.250.64
 #
 #      - name: Check out only flutterFlow web folder
 #        uses: actions/checkout@v4
