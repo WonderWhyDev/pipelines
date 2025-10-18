@@ -74,7 +74,9 @@ runs:
       shell: bash
       run: |
         mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
         ssh-keyscan -H ${{ inputs.ec2IP }} >> ~/.ssh/known_hosts
+        chmod 644 ~/.ssh/known_hosts
 
     - name: Copy ZIP FILE to EC2
       shell: bash
