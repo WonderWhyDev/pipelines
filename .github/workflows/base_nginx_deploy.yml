@@ -60,6 +60,10 @@ jobs:
           sparse-checkout-cone-mode: false
           ref :  ${{ inputs.versionToBuild }}
 
+      - name: Update network name for QA
+        if: ${{ inputs.environment == 'qa' }}
+        run: |
+          sed -i 's|name: wonderwhy_postgres-network|name: wonderwhy-network|' wonderWhy/nginx/compose.yml
       - run: |
           cd wonderWhy
           ls -lsh
