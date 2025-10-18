@@ -8,7 +8,7 @@ on:
 jobs:
   FlutterFlowWebBuild:
     runs-on: ubuntu-latest
-    environment: prod
+    environment: magnum
     steps:
       - run: |
           echo ${{ secrets.EC2_IP }}
