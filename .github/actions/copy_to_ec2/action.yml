@@ -78,7 +78,8 @@ runs:
         echo "2"
         chmod 700 ~/.ssh
         echo "3"
-        ssh-keyscan -H ${{ inputs.ec2IP }} >> ~/.ssh/known_hosts
+        echo inputs.ec2IP
+        touch ~/.ssh/known_hosts
         echo "4"
         chmod 644 ~/.ssh/known_hosts
         echo "5"
