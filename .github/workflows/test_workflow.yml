@@ -12,7 +12,11 @@ jobs:
     steps:
       - run: |
           echo ${{ secrets.EC2_IP }}
+          echo "1"
+          ssh-keyscan -H 52.4.164.231
+          echo "2"
           ssh-keyscan -H 13.202.250.64
+          echo "3"
 #
 #      - name: Check out only flutterFlow web folder
 #        uses: actions/checkout@v4
