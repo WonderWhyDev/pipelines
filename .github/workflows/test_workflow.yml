@@ -13,9 +13,9 @@ jobs:
       - run: |
           echo ${{ secrets.EC2_IP }}
           echo "1"
-          ssh-keyscan -H 52.4.164.231
+          ssh-keyscan -H 52.4.164.231 -T 240
           echo "2"
-          ssh-keyscan -H 13.202.250.64
+          ssh-keyscan -H 13.202.250.64 -T 240
           echo "3"
 #
 #      - name: Check out only flutterFlow web folder
