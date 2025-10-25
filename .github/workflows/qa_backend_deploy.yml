@@ -85,7 +85,7 @@ jobs:
 
   prod_deploy:
     runs-on: ubuntu-latest
-    needs: find_latest_version
+    needs: validate_backend
     if: ${{ inputs.environment == 'prod' }}
     environment: magnum
     steps:
@@ -99,7 +99,7 @@ jobs:
           token: ${{ secrets.REPO_READ_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
-          ref:  ${{ needs.find_latest_version.outputs.latest_version }}
+          ref:  ${{ needs.validate_backend.outputs.latest_version }}
 
       - uses: actions/setup-node@v3
         with:
