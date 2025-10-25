@@ -11,32 +11,6 @@ jobs:
     
     steps:
     - uses: actions/checkout@v2
-    
-    - name: Configure AWS CLI
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-        aws-region: us-east-1
-        
-    - name: Install Certbot
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y certbot python3-certbot-dns-route53
-        
-    - name: Generate SSL Certificate for wondermove.in
-      continue-on-error: true
-      run: |
-        certbot certonly \
-          --dns-route53 \
-          --agree-tos \
-          --non-interactive \
-          --dns-route53-propagation-seconds 60 \
-          -d wondermove.in -d wonderwhy.in -d www.wondermove.in -d www.wonderwhy.in \
-          --email thinker@wonderwhy.in \
-          --config-dir ./ \
-          --work-dir ./ \
-          --logs-dir /tmp
 
     - name: Get Runner IP
       run: |
@@ -68,6 +42,34 @@ jobs:
         ls
         mkdir -p ~/.ssh
         ssh-keyscan -H ${{ secrets.EC2_IP }} >> ~/.ssh/known_hosts
+
+    
+    - name: Configure AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region: us-east-1
+        
+    - name: Install Certbot
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y certbot python3-certbot-dns-route53
+        
+    - name: Generate SSL Certificate for wondermove.in
+      continue-on-error: true
+      run: |
+        certbot certonly \
+          --dns-route53 \
+          --agree-tos \
+          --non-interactive \
+          --dns-route53-propagation-seconds 60 \
+          -d wondermove.in -d wonderwhy.in -d www.wondermove.in -d www.wonderwhy.in \
+          --email thinker@wonderwhy.in \
+          --config-dir ./ \
+          --work-dir ./ \
+          --logs-dir /tmp
+
 
     - name: Clone Secrets to EC2
       run: |
