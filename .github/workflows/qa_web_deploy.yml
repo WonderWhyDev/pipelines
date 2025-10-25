@@ -40,11 +40,11 @@ jobs:
         OAUTH_MOBILE_APP_CLIENT_ID: ${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}
   
   prod-web-deploy:
-    needs: find_latest_version
+    needs: qa-web-deploy
     if: ${{ inputs.environment == 'prod' }}
     uses: ./.github/workflows/base_web_deploy.yml
     with:
-      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      versionToBuild: ${{ needs.qa-web-deploy.outputs.latest_version }}
       environment: magnum
     secrets:
         REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
