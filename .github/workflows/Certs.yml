@@ -12,17 +12,17 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install Certbot
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y certbot python3-certbot-dns-route53 
+    # - name: Install Certbot
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y certbot python3-certbot-dns-route53 
         
-    - name: Configure AWS CLI
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-        aws-region: us-east-1
+    # - name: Configure AWS CLI
+    #   uses: aws-actions/configure-aws-credentials@v2
+    #   with:
+    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+    #     aws-region: us-east-1
         
 #    - name: Generate SSL Certificate for wondermove.in
 #      continue-on-error: true
@@ -51,6 +51,8 @@ jobs:
         # PRIVKEY=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem | base64 -w 0)
         export FULLCHAIN=test
         export PRIVKEY=test1
+
+        echo 
         
         # Set secrets using GitHub CLI
         echo "$FULLCHAIN" | gh secret set SSL_FULLCHAIN_PEM --env magnum
