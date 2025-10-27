@@ -70,7 +70,11 @@ jobs:
           --agree-tos \
           --non-interactive \
           --dns-route53-propagation-seconds 60 \
-          -d wondermove.in -d wonderwhy.in -d www.wondermove.in -d www.wonderwhy.in \
+          -d wondermove.in -d wonderwhy.in \
+          -d www.wondermove.in -d www.wonderwhy.in \
+          -d magnum.wondermove.in -d app.wonderwhy.in \
+          -d auth.magnum.wondermove.in -d auth.app.wonderwhy.in \
+          -d test1.magnum.wondermove.in -d auth.test1.wonderwhy.in \
           --email thinker@wonderwhy.in \
           --config-dir ./ \
           --work-dir ./ \
