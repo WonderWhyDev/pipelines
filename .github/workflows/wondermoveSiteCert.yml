@@ -72,9 +72,9 @@ jobs:
           --dns-route53-propagation-seconds 60 \
           -d wondermove.in -d wonderwhy.in \
           -d www.wondermove.in -d www.wonderwhy.in \
-          -d magnum.wondermove.in -d app.wonderwhy.in \
-          -d auth.magnum.wondermove.in -d auth.app.wonderwhy.in \
-          -d test1.magnum.wondermove.in -d auth.test1.wonderwhy.in \
+          -d magnum.wondermove.in -d app.wondermove.in \
+          -d auth.magnum.wondermove.in -d auth.app.wondermove.in \
+          -d test1.magnum.wondermove.in -d auth.test1.wondermove.in \
           --email thinker@wonderwhy.in \
           --config-dir ./ \
           --work-dir ./ \
