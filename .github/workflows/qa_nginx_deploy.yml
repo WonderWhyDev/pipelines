@@ -45,25 +45,9 @@ jobs:
         DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
 
   prod-nginx-deploy:
-    needs: find_latest_version
+    needs: [qa_nginx_deploy, find_latest_version]
     if: ${{ inputs.environment == 'prod' }}
-    uses: ./.github/workflows/base_nginx_deploy.yml
+    uses: ./.github/workflows/prod_nginx_deploy.yml
     with:
-      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
-      environment: magnum
-    secrets:
-        REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
-        EC2_IP: ${{ secrets.EC2_IP }}
-        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
-        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
-        AWS_REGION: ${{ secrets.AWS_REGION }}
-        EC2_USER: ${{ secrets.EC2_USER }}
-        SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
-        SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-        CA_CERTS_FULL_CHAIN: ${{ secrets.CA_CERTS_FULL_CHAIN }}
-        CA_CERTS_PRIVATE_KEY: ${{ secrets.CA_CERTS_PRIVATE_KEY }}
-        WEBSITE_CERT_FULL_CHAIN: ${{ secrets.WEBSITE_CERT_FULL_CHAIN }}
-        WEBSITE_CERT_PREV_KEY: ${{ secrets.WEBSITE_CERT_PREV_KEY }}
-        CERT_FULL_CHAIN_TENANT: ${{ secrets.CERT_FULL_CHAIN_TENANT }}
-        CERT_PREV_KEY_TENANT: ${{ secrets.CERT_PREV_KEY_TENANT }}
-        DOMAIN_NAME: magnum
+      latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
+      repo_token: ${{ secrets.REPO_READ_TOKEN }}
