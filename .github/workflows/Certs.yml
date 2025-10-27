@@ -42,19 +42,20 @@ jobs:
 #          --work-dir ./ \
 #          --logs-dir /tmp
 
-    - name: Upload Certificates to GitHub Secrets
-      env:
-        GH_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
-      run: |        
-        # Read certificate files and encode to base64
+    - name: Configure AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region: ap-south-1
+
+
+    - name: Upload Certificates to aws Secrets Manager
+      run: |
         # FULLCHAIN=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem | base64 -w 0)
         # PRIVKEY=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem | base64 -w 0)
-        export FULLCHAIN=test
-        export PRIVKEY=test1
-
-        echo 
-        
-        # Set secrets using GitHub CLI
-        echo "$FULLCHAIN" | gh secret set SSL_FULLCHAIN_PEM --env magnum
-        echo "$PRIVKEY" | gh secret set SSL_PRIVKEY_PEM --env magnum
+        FULLCHAIN=test
+        PRIVKEY=test2
+        aws secretsmanager put-secret-value --secret-id CA_CERTS_FULL_CHAIN --secret-string "{\"cert\":\"$FULLCHAIN\"}"
+        aws secretsmanager put-secret-value --secret-id CA_CERTS_PRIVATE_KEY --secret-string "{\"key\":\"$PRIVKEY\"}"
 
