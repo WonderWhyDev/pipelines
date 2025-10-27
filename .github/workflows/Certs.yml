@@ -49,6 +49,11 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
         aws-region: ap-south-1
 
+    - name: Create Secrets if they don't exist
+      run: |
+        aws secretsmanager create-secret --name CA_CERTS_FULL_CHAIN --description "SSL Full Chain Certificate" --region ap-south-1 || echo "Secret CA_CERTS_FULL_CHAIN already exists"
+        aws secretsmanager create-secret --name CA_CERTS_PRIVATE_KEY --description "SSL Private Key" --region ap-south-1 || echo "Secret CA_CERTS_PRIVATE_KEY already exists"
+
 
     - name: Upload Certificates to aws Secrets Manager
       run: |
