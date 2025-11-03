@@ -16,7 +16,7 @@ jobs:
   find_latest_version:
     uses: ./.github/workflows/base_get_latest_repo_version.yml
     with:
-      environment: magnum
+      environment: qa
     secrets:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
@@ -26,7 +26,66 @@ jobs:
     outputs:
       latest_version: ${{ steps.set_version.outputs.latest_version }}
     environment:
-      name: magnum
+      name: qa
+    steps:
+      - name: check out repository for actions
+        uses: actions/checkout@v4
+
+      - name: Check out wonderwhy folder
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          ref:  ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: 'wonderWhy/yarn.lock'
+      - run: |
+          cd wonderWhy
+          yarn install
+          yarn b prismaUp
+          yarn b format
+          yarn b lint
+          yarn b build
+      - uses: ./.github/actions/upload_version_file
+        with:
+          version: ${{ needs.find_latest_version.outputs.latest_version }}
+          env: qa
+      - run: |
+          sed -i 's|name: wonderwhy_postgres-network|name: wonderwhy-network|' wonderWhy/backend/deploy/compose.yml
+          mkdir backend
+          cp -r wonderWhy/backend/prisma backend/
+          cp -r wonderWhy/backend/prisma/migrations backend/prisma/schema/
+          cp wonderWhy/backend/dist/app.js backend/
+          cp wonderWhy/backend/package.json backend/
+          cp wonderWhy/backend/deploy/* backend/
+          zip -r backend.zip backend
+
+      - uses: ./.github/actions/copy_to_ec2
+        with:
+          ec2IP: ${{ secrets.EC2_IP }}
+          awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+          awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+          awsRegion: ${{ secrets.AWS_REGION }}
+          ec2User: ${{ secrets.EC2_USER }}
+          securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+          sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+          fileToCopy: ./backend.zip
+          destination: ~/backend.zip
+          unzipDestination: ~/
+          runScript: |
+            cd backend
+            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} ${{ secrets.OAUTH_CLIENT_SECRET }} ${{secrets.ZITADEL_PAT}}
+
+  tenant_backend:
+    runs-on: ubuntu-latest
+    needs: validate_backend
+    environment: magnum
     steps:
       - name: check out repository for actions
         uses: actions/checkout@v4
@@ -79,5 +138,5 @@ jobs:
           unzipDestination: ~/tenantApps
           runScript: |
             cd tenantApps/backend
-            sh deployTenantapps.sh ${{ secrets.OAUTH_CLIENT_ID }} ${{ secrets.OAUTH_CLIENT_SECRET }}  
+            sh deployTenantapps.sh ${{ secrets.OAUTH_CLIENT_ID }} ${{ secrets.OAUTH_CLIENT_SECRET }} ${{secrets.ZITADEL_PAT}}
   
