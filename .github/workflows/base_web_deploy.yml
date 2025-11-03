@@ -131,10 +131,10 @@ jobs:
              BACKEND_DOMAIN="https://$BASE_DOMAIN"
              REDIRECT_URL="https://$BASE_DOMAIN"
              echo '{
-                "authDomain": "'"https://$AUTH_DOMAIN"'",
-                "appBackendDomain": "https://__HOST__",
+                "authDomain": "https://auth._HOST_",
+                "appBackendDomain": "https://_HOST_",
                 "clientId": "'"${{ secrets.OAUTH_CLIENT_ID }}"'",
-                "redirectUrl": "https://__HOST__",
+                "redirectUrl": "https://_HOST_",
                 "isDebugAllowed": true,
                 "mobileRedirectUrl":"app://wondermove.in/initialLoaderPage",
                 "mobileAppClientId":"'"${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}"'"
