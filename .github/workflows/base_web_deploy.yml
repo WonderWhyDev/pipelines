@@ -136,7 +136,7 @@ jobs:
                 "clientId": "'"${{ secrets.OAUTH_CLIENT_ID }}"'",
                 "redirectUrl": "https://_HOST_",
                 "isDebugAllowed": true,
-                "mobileRedirectUrl":"app://wondermove.in/initialLoaderPage",
+                "mobileRedirectUrl":"app://wondermove.in/login",
                 "mobileAppClientId":"'"${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}"'"
               }' > ~/nginx/config/config.json
              echo "config.json file created"
