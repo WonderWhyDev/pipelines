@@ -108,7 +108,7 @@ jobs:
 
       - name: Build APK in --release mode
         run: |
-          cd wonderWhy/flutterFlow/magnum_mobile
+          cd wonderWhy/flutterFlow/wonder_move_mobile
           flutter clean
           flutter pub get
           flutter build apk --release
@@ -125,7 +125,16 @@ jobs:
             - Built from commit: ${{ github.sha }}
             - Built by: ${{ github.actor }}
           files: |
-            wonderWhy/flutterFlow/magnum_mobile/build/app/outputs/flutter-apk/app-release.apk
+            wonderWhy/flutterFlow/wonder_move_mobile/build/app/outputs/flutter-apk/app-release.apk
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          releaseNotes: Release v${{ steps.increment_version.outputs.new_version }}
+          file: wonderWhy/flutterFlow/wonder_move_mobile/build/app/outputs/flutter-apk/app-release.apk
+          groups: devGroup
