@@ -1,4 +1,4 @@
-name: FlutterFlow - Mobile App Release
+name: Android MobileApp Deploy
 
 on:
   workflow_dispatch:
