@@ -11,7 +11,7 @@ on:
         description: "Deployment environment (qa/prod)"
         required: true
         type: string
-    secrets: inherit
+    secrets: {}
 
 jobs:
   FlutterFlow:
