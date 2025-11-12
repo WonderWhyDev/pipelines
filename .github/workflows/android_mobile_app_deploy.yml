@@ -16,14 +16,14 @@ on:
 
 jobs:
   qa-build:
-    uses: ./.github/workflows/build-mobile.yml
+    uses: ./.github/workflows/base_mobile_app_build.yml
     with:
       version_type: ${{ github.event.inputs.version_type }}
       environment: qa
     secrets: inherit
 
   prod-build:
-    uses: ./.github/workflows/build-mobile.yml
+    uses: ./.github/workflows/base_mobile_app_build.yml
     with:
       version_type: ${{ github.event.inputs.version_type }}
       environment: prod
