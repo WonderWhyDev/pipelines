@@ -26,5 +26,5 @@ jobs:
     uses: ./.github/workflows/base_mobile_app_build.yml
     with:
       version_type: ${{ github.event.inputs.version_type }}
-      environment: prod
+      environment: magnum
     secrets: inherit
