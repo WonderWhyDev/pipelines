@@ -1,0 +1,30 @@
+name: FlutterFlow - Mobile App Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Select version number'
+        required: true
+        type: choice
+        options:
+          - build
+          - patch
+          - minor
+          - major
+        default: 'build'
+
+jobs:
+  qa-build:
+    uses: ./.github/workflows/build-mobile.yml
+    with:
+      version_type: ${{ github.event.inputs.version_type }}
+      environment: qa
+    secrets: inherit
+
+  prod-build:
+    uses: ./.github/workflows/build-mobile.yml
+    with:
+      version_type: ${{ github.event.inputs.version_type }}
+      environment: prod
+    secrets: inherit

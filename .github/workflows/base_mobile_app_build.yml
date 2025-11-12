@@ -1,28 +1,22 @@
-name: FlutterFlow - Mobile App Release
-
-run-name: ${{ github.actor }} - Manual Build Triggered
+name: Build Mobile App 
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       version_type:
-        description: 'Select version number'
+        description: "Version type"
         required: true
-        type: choice
-        options:
-          - build
-          - patch
-          - minor
-          - major
-        default: 'build'
+        type: string
+      environment:
+        description: "Deployment environment (qa/prod)"
+        required: true
+        type: string
+    secrets: inherit
 
 jobs:
-
   FlutterFlow:
     runs-on: ubuntu-latest
-
-    environment:
-      name: qa
+    environment: ${{ inputs.environment }}
 
     steps:
       - name: Checkout current repo (for gh release)
@@ -55,11 +49,10 @@ jobs:
           LATEST_TAG=$(gh release view --json tagName -q ".tagName" || echo "v0.0.0")
           
           if [ "$LATEST_TAG" == "v0.0.0" ]; then
-            VERSION="1.0.0+1"  
+            VERSION="1.0.0+1"
             echo "No previous release found. Using default version: $VERSION"
           else
             VERSION=${LATEST_TAG#v}
-            echo "current_version=$VERSION" >> $GITHUB_OUTPUT
             echo "Latest version from release: $VERSION"
           fi
 
@@ -73,8 +66,7 @@ jobs:
           MINOR=$(echo $VERSION | cut -d. -f2)
           PATCH=$(echo $VERSION | cut -d. -f3 | cut -d+ -f1)
           BUILD=$(echo $VERSION | cut -d+ -f2)
-          NEW_BUILD=$((BUILD + 1))
-          
+
           case "${{ github.event.inputs.version_type }}" in
             "major")
               NEW_MAJOR=$((MAJOR + 1))
@@ -122,24 +114,23 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.increment_version.outputs.new_version }}
-          name: Release v${{ steps.increment_version.outputs.new_version }}
+          tag_name: v${{ steps.increment_version.outputs.new_version }}-${{ inputs.environment }}
+          name: Release v${{ steps.increment_version.outputs.new_version }} [${{ inputs.environment }}]
           body: |
-            Release v${{ steps.increment_version.outputs.new_version }}
-            - Version type: ${{ github.event.inputs.version_type }}
-            - Built from commit: ${{ github.sha }}
-            - Built by: ${{ github.actor }}
+            Environment: ${{ inputs.environment }}
+            Version type: ${{ inputs.version_type }}
+            Built from commit: ${{ github.sha }}
+            Built by: ${{ github.actor }}
           files: |
             wonderWhy/flutterFlow/wonder_move_mobile/build/app/outputs/flutter-apk/app-release.apk
-
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Distribution
+      - name: Distribute to Firebase
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          releaseNotes: Release v${{ steps.increment_version.outputs.new_version }}
+          releaseNotes: Release v${{ steps.increment_version.outputs.new_version }} [${{ inputs.environment }}]
           file: wonderWhy/flutterFlow/wonder_move_mobile/build/app/outputs/flutter-apk/app-release.apk
           groups: devGroup
