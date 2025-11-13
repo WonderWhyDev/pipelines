@@ -11,18 +11,18 @@ on:
         description: "Deployment environment (qa/prod)"
         required: true
         type: string
-      secrets:
-        AUTH_DOMAIN:
-          required: true
-        GITHUB_TOKEN:
-          required: true
-        FIREBASE_APP_ID:
-          required: true
-        FIREBASE_SERVICE_ACCOUNT:
-          required: true
-        REPO_READ_TOKEN:
-          required: false
-
+    secrets:
+      AUTH_DOMAIN:
+        required: true
+      GITHUB_TOKEN:
+        required: true
+      FIREBASE_APP_ID:
+        required: true
+      FIREBASE_SERVICE_ACCOUNT:
+        required: true
+      REPO_READ_TOKEN:
+        required: false
+        
 jobs:
   FlutterFlow:
     runs-on: ubuntu-latest
