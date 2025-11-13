@@ -20,11 +20,19 @@ jobs:
     with:
       version_type: ${{ github.event.inputs.version_type }}
       environment: qa
-    secrets: inherit
+    secrets: 
+      AUTH_DOMAIN: ${{ secrets.AUTH_DOMAIN }}
+      FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
   prod-build:
     uses: ./.github/workflows/base_mobile_app_build.yml
     with:
       version_type: ${{ github.event.inputs.version_type }}
       environment: magnum
-    secrets: inherit
+    secrets: 
+      AUTH_DOMAIN: ${{ secrets.AUTH_DOMAIN }}
+      FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
