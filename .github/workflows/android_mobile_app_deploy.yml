@@ -25,6 +25,8 @@ jobs:
       FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
+      DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
 
   prod-build:
     uses: ./.github/workflows/base_mobile_app_build.yml
@@ -36,3 +38,5 @@ jobs:
       FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
+      DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
