@@ -111,6 +111,9 @@ jobs:
           echo "New version: $NEW_VERSION"
 
       - name: Build APK in --release mode
+        env:
+          DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
+          BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
         run: |
           cd wonderWhy/flutterFlow/wonder_move_mobile
           echo " DOMAIN_NAME: $DOMAIN_NAME"
