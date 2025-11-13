@@ -19,7 +19,7 @@ on:
       FIREBASE_SERVICE_ACCOUNT:
         required: true
       REPO_READ_TOKEN:
-        required: false
+        required: true
 
 jobs:
   FlutterFlow:
