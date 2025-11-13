@@ -20,6 +20,10 @@ on:
         required: true
       REPO_READ_TOKEN:
         required: true
+      BASE_DOMAIN:
+        required: true
+      DOMAIN_NAME:
+        required: true
 
 jobs:
   FlutterFlow:
@@ -107,15 +111,12 @@ jobs:
           echo "New version: $NEW_VERSION"
 
       - name: Build APK in --release mode
-        env:
-          AUTH_DOMAIN: ${{ secrets.AUTH_DOMAIN }}
         run: |
           cd wonderWhy/flutterFlow/wonder_move_mobile
-          BASE_DOMAIN=$(echo "$AUTH_DOMAIN" | sed 's/^auth\.//')
-          echo " AUTH_DOMAIN: $AUTH_DOMAIN"
+          echo " DOMAIN_NAME: $DOMAIN_NAME"
           echo " BASE_DOMAIN: $BASE_DOMAIN"
           sed -i "s/^version: .*/version: ${{ steps.increment_version.outputs.new_version }}/" "pubspec.yaml"
-          sed -i "s|String _appBackendDomain = .*|String _appBackendDomain = 'https://$BASE_DOMAIN';|" lib/app_state.dart
+          sed -i "s|String _appBackendDomain = .*|String _appBackendDomain = 'https://$DOMAIN_NAME.$BASE_DOMAIN';|" lib/app_state.dart
           flutter clean
           flutter pub get
           flutter build apk --release
