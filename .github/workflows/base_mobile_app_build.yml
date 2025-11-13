@@ -116,8 +116,6 @@ jobs:
           BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
         run: |
           cd wonderWhy/flutterFlow/wonder_move_mobile
-          echo " DOMAIN_NAME: $DOMAIN_NAME"
-          echo " BASE_DOMAIN: $BASE_DOMAIN"
           sed -i "s/^version: .*/version: ${{ steps.increment_version.outputs.new_version }}/" "pubspec.yaml"
           sed -i "s|String _appBackendDomain = .*|String _appBackendDomain = 'https://$DOMAIN_NAME.$BASE_DOMAIN';|" lib/app_state.dart
           flutter clean
