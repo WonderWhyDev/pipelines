@@ -37,3 +37,4 @@ jobs:
         SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
         CA_CERTS_FULL_CHAIN: ${{ secrets.CA_CERTS_FULL_CHAIN }}
         CA_CERTS_PRIVATE_KEY: ${{ secrets.CA_CERTS_PRIVATE_KEY }}
+        AUTH_DOMAIN: "https://auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}"
