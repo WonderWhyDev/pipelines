@@ -52,6 +52,12 @@ jobs:
           sparse-checkout-cone-mode: false
           ref :  ${{ inputs.versionToBuild }}
 
+      - name: Expose AUTH_DOMAIN so it prints normally
+        run: echo "AUTH_DOMAIN=${{ secrets.AUTH_DOMAIN }}" >> $GITHUB_ENV
+
+      - name: Print AUTH_DOMAIN
+        run: echo "AUTH_DOMAIN = $AUTH_DOMAIN"
+
       - run: |
           cd wonderWhy
           ls -lsh
