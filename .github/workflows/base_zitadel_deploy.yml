@@ -29,6 +29,8 @@ on:
             required: true
         CA_CERTS_PRIVATE_KEY:
             required: true
+        AUTH_DOMAIN:
+            required: true
 
 jobs:
   deploy_zitadel:
@@ -72,7 +74,7 @@ jobs:
            unzipDestination: ~/
            runScript: |
              cd zitadel
-             sh deploy.sh
+             sh deploy.sh ${{ secrets.AUTH_DOMAIN }}
 
 
 
