@@ -127,9 +127,6 @@ jobs:
              cp -r reactWeb/* ~/nginx/html/
              cp -r wondermoveSite/* ~/nginx/wondermoveSite/
              echo "completed copying files"
-             BASE_DOMAIN=$(echo "$AUTH_DOMAIN" | sed 's/^auth\.//')
-             BACKEND_DOMAIN="https://$BASE_DOMAIN"
-             REDIRECT_URL="https://$BASE_DOMAIN"
              echo '{
                 "authDomain": "https://auth._HOST_",
                 "appBackendDomain": "https://_HOST_",
