@@ -66,4 +66,4 @@ jobs:
         WEBSITE_CERT_PREV_KEY: ${{ secrets.WEBSITE_CERT_PREV_KEY }}
         CERT_FULL_CHAIN_TENANT: ${{ secrets.CERT_FULL_CHAIN_TENANT }}
         CERT_PREV_KEY_TENANT: ${{ secrets.CERT_PREV_KEY_TENANT }}
-        DOMAIN_NAME: magnum
+        DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
