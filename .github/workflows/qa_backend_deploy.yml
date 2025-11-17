@@ -140,4 +140,5 @@ jobs:
           unzipDestination: ~/
           runScript: |
             cd backend
-            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }}  ${{ secrets.ZITADEL_PAT }}
+            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }}  ${{ secrets.ZITADEL_PAT }}  "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}"
+
