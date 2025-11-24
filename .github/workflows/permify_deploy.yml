@@ -22,8 +22,7 @@ jobs:
 
   qa_permify_deploy:
     needs: find_latest_version
-    outputs:
-      latest_version: ${{ steps.set_version.outputs.latest_version }}
+    
     if: ${{ inputs.environment == 'qa' }}
     uses: ./.github/workflows/base_permify_deploy.yml
     with:
@@ -47,11 +46,11 @@ jobs:
         DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
 
   prod_permify_deploy:
-    needs: qa_permify_deploy
+    needs: find_latest_version
     if: ${{ inputs.environment == 'prod' }}
     uses: ./.github/workflows/base_permify_deploy.yml
     with:
-      versionToBuild: ${{ needs.qa_permify_deploy.outputs.latest_version }}
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
       environment: magnum
     secrets:
         REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
