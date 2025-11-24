@@ -92,7 +92,4 @@ jobs:
             echo "Database 'permify' is ready."
 
             cd permify
-            source ~/.bashrc
-            sudo docker-compose stop permify
-            sudo docker-compose up permify -d
-            sudo docker-compose logs permify
+            sh deploy.sh
