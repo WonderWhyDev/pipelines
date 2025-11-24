@@ -85,7 +85,19 @@ jobs:
            destination: ~/permify.zip
            unzipDestination: ~/
            runScript: |
-             cd permify
-             sudo docker-compose stop permify
-             sudo docker-compose up permify -d
-             sudo docker-compose logs permify
+            export PGPASSWORD=$PG_PASSWORD
+            psql -h $PG_HOST -U $PG_USERNAME -d postgres << EOF_SQL
+              DO
+              \$\$
+              BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'permify') THEN
+                  PERFORM dblink_exec('dbname=postgres', 'CREATE DATABASE permify');
+                END IF;
+              END
+              \$\$;
+              EOF_SQL
+            
+            cd permify
+            sudo docker-compose stop permify
+            sudo docker-compose up permify -d
+            sudo docker-compose logs permify
