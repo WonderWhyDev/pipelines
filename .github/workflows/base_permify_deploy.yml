@@ -91,6 +91,7 @@ jobs:
 
             echo "Database 'permify' is ready."
             
+            source /home/ec2-user/.bashrc
             cd permify
             sudo docker-compose stop permify
             sudo docker-compose up permify -d
