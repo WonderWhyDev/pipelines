@@ -1,4 +1,4 @@
-name: Base Nginx Deploy
+name: Base Permify Deploy
 on:
   workflow_call:
     inputs:
