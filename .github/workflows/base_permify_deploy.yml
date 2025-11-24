@@ -86,16 +86,10 @@ jobs:
            unzipDestination: ~/
            runScript: |
             export PGPASSWORD=$PG_PASSWORD
-            psql -h $PG_HOST -U $PG_USERNAME -d postgres << EOF_SQL
-              DO
-              \$\$
-              BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'permify') THEN
-                  CREATE DATABASE permify;
-                END IF;
-              END
-              \$\$;
-            EOF_SQL
+            psql -h $PG_HOST -U $PG_USERNAME -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'permify'" | grep -q 1 || \
+            psql -h $PG_HOST -U $PG_USERNAME -d postgres -c "CREATE DATABASE permify;"
+
+            echo "Database 'permify' is ready."
             
             cd permify
             sudo docker-compose stop permify
