@@ -20,10 +20,12 @@ jobs:
     secrets:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
-  qa_nginx_deploy:
+  qa_permify_deploy:
     needs: find_latest_version
+    outputs:
+      latest_version: ${{ steps.set_version.outputs.latest_version }}
     if: ${{ inputs.environment == 'qa' }}
-    uses: ./.github/workflows/base_nginx_deploy.yml
+    uses: ./.github/workflows/base_permify_deploy.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
       environment: qa
@@ -44,12 +46,12 @@ jobs:
         CERT_PREV_KEY_TENANT: ${{ secrets.CERT_PREV_KEY_TENANT }}
         DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
 
-  prod-nginx-deploy:
-    needs: find_latest_version
+  prod_permify_deploy:
+    needs: qa_permify_deploy
     if: ${{ inputs.environment == 'prod' }}
-    uses: ./.github/workflows/base_nginx_deploy.yml
+    uses: ./.github/workflows/base_permify_deploy.yml
     with:
-      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      versionToBuild: ${{ needs.qa_permify_deploy.outputs.latest_version }}
       environment: magnum
     secrets:
         REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
