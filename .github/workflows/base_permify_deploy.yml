@@ -95,7 +95,7 @@ jobs:
                 END IF;
               END
               \$\$;
-              EOF_SQL
+            EOF_SQL
             
             cd permify
             sudo docker-compose stop permify
