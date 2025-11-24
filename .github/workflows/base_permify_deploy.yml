@@ -91,7 +91,7 @@ jobs:
               \$\$
               BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'permify') THEN
-                  PERFORM dblink_exec('dbname=postgres', 'CREATE DATABASE permify');
+                  CREATE DATABASE permify;
                 END IF;
               END
               \$\$;
