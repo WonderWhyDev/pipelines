@@ -90,9 +90,9 @@ jobs:
             psql -h $PG_HOST -U $PG_USERNAME -d postgres -c "CREATE DATABASE permify;"
 
             echo "Database 'permify' is ready."
-            
-            source /home/ec2-user/.bashrc
+
             cd permify
+            source ~/.bashrc
             sudo docker-compose stop permify
             sudo docker-compose up permify -d
             sudo docker-compose logs permify
