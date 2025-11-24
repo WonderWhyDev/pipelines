@@ -1,0 +1,91 @@
+name: Base Nginx Deploy
+on:
+  workflow_call:
+    inputs:
+      versionToBuild:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+    secrets:
+        REPO_TOKEN:
+            required: true
+        EC2_IP:
+            required: true
+        AWS_ACCESS_KEY:
+            required: true
+        AWS_SECRET_KEY:
+            required: true
+        AWS_REGION:
+            required: true
+        EC2_USER:
+            required: true
+        SECURITY_GROUP_ID:
+            required: true
+        SSH_PRIVATE_KEY_FOR_EC2:
+            required: true
+        CA_CERTS_FULL_CHAIN:
+            required: true
+        CA_CERTS_PRIVATE_KEY:
+            required: true
+        WEBSITE_CERT_FULL_CHAIN:
+            required : true
+        WEBSITE_CERT_PREV_KEY:
+            required : true
+        CERT_FULL_CHAIN_TENANT:
+            required: true  
+        CERT_PREV_KEY_TENANT:
+            required: true
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    steps:
+      - name: check out repository for actions
+        uses: actions/checkout@v4
+
+      - name: Check out only nginx folder
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          sparse-checkout: 'permify'
+          sparse-checkout-cone-mode: false
+          ref :  ${{ inputs.versionToBuild }}
+
+      - run: |
+          cd wonderWhy
+          ls -lsh
+          mkdir -p permify/certs
+          mkdir -p permify/site/certs
+          mkdir -p permify/tenantApps/certs
+          echo "${{ secrets.CA_CERTS_FULL_CHAIN }}" > permify/certs/fullchain.pem  
+          echo "${{ secrets.CA_CERTS_PRIVATE_KEY }}" > permify/certs/privkey.pem 
+          echo "${{ secrets.WEBSITE_CERT_FULL_CHAIN }}" > permify/site/certs/fullchain.pem
+          echo "${{ secrets.WEBSITE_CERT_PREV_KEY }}" > permify/site/certs/privkey.pem
+          echo "${{ secrets.CERT_FULL_CHAIN_TENANT }}" > permify/tenantApps/certs/fullchain.pem
+          echo "${{ secrets.CERT_PREV_KEY_TENANT }}" > permify/tenantApps/certs/privkey.pem
+          zip -r permify.zip permify
+
+      - uses: ./.github/actions/copy_to_ec2
+        with:
+           ec2IP: ${{ secrets.EC2_IP }}
+           awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+           awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+           awsRegion: ${{ secrets.AWS_REGION }}
+           ec2User: ${{ secrets.EC2_USER }}
+           securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+           sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+           fileToCopy: ./wonderWhy/permify.zip
+           destination: ~/permify.zip
+           unzipDestination: ~/
+           runScript: |
+             cd permify
+             sudo docker-compose stop permify
+             sudo docker-compose up permify -d
+             sudo docker-compose logs permify
