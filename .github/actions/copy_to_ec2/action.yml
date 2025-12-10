@@ -95,7 +95,7 @@ runs:
       run: |
         ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem ${{ inputs.ec2User }}@${{ inputs.ec2IP }} << 'EOF'
         sudo chown -R ec2-user:ec2-user /home/ec2-user/backend/
-        sudo chown -R 700 /home/ec2-user/backend/
+        sudo chmod -R 700 /home/ec2-user/backend/
         unzip -o ${{ inputs.destination }} -d ${{ inputs.unzipDestination }}
         EOF
 
