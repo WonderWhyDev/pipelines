@@ -62,6 +62,7 @@ jobs:
           cp -r wonderWhy/backend/prisma backend/
           cp -r wonderWhy/backend/prisma/migrations backend/prisma/schema/
           cp wonderWhy/backend/dist/app.js backend/
+          cp wonderWhy/backend/externalPackages backend/externalPackages
           cp wonderWhy/backend/package.json backend/
           cp wonderWhy/backend/prisma.config.ts backend/
           cp wonderWhy/backend/deploy/* backend/
@@ -123,6 +124,7 @@ jobs:
           cp -r wonderWhy/backend/prisma backend/
           cp -r wonderWhy/backend/prisma/migrations backend/prisma/schema/
           cp wonderWhy/backend/dist/app.js backend/
+          cp wonderWhy/backend/externalPackages backend/externalPackages
           cp wonderWhy/backend/package.json backend/
           cp wonderWhy/backend/prisma.config.ts backend/
           cp wonderWhy/backend/deploy/* backend/
