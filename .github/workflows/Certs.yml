@@ -35,6 +35,7 @@ jobs:
           -d www.wondermove.in -d www.wonderwhy.in \
           -d magnum.wondermove.in -d app.wondermove.in \
           -d auth.magnum.wondermove.in -d auth.app.wondermove.in \
+          -d vijay.wondermove.in -d avd.wondermove.in \
           --email thinker@wonderwhy.in \
           --config-dir ./ \
           --work-dir ./ \
@@ -52,10 +53,28 @@ jobs:
       run: |
         aws secretsmanager create-secret --name CA_CERTS_FULL_CHAIN --description "SSL Full Chain Certificate" --region ap-south-1 || echo "Secret CA_CERTS_FULL_CHAIN already exists"
         aws secretsmanager create-secret --name CA_CERTS_PRIVATE_KEY --description "SSL Private Key" --region ap-south-1 || echo "Secret CA_CERTS_PRIVATE_KEY already exists"
-
-    - name: Upload Certificates to aws Secrets Manager
+    
+    - name: Encrypt certs using RSA-4096 and upload to Secrets Manager
       run: |
-        FULLCHAIN=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem | base64 -w 0)
-        PRIVKEY=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem | base64 -w 0)
-        aws secretsmanager put-secret-value --secret-id CA_CERTS_FULL_CHAIN --secret-string "{\"cert\":\"$FULLCHAIN\"}"
-        aws secretsmanager put-secret-value --secret-id CA_CERTS_PRIVATE_KEY --secret-string "{\"key\":\"$PRIVKEY\"}"
+        echo "${{ secrets.RSA_4096_PUBLIC_KEY }}" > rsa_public.pem
+
+        openssl rsautl -encrypt \
+          -pubin -inkey rsa_public.pem \
+          -in /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem \
+          -out fullchain.pem.enc
+
+        openssl rsautl -encrypt \
+          -pubin -inkey rsa_public.pem \
+          -in /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem \
+          -out privkey.pem.enc
+
+        FULLCHAIN=$(cat fullchain.pem.enc | base64 -w 0)
+        PRIVKEY=$(cat privkey.pem.enc | base64 -w 0)
+
+        aws secretsmanager put-secret-value \
+          --secret-id CA_CERTS_FULL_CHAIN \
+          --secret-string "{\"cert\":\"$FULLCHAIN\"}"
+
+        aws secretsmanager put-secret-value \
+          --secret-id CA_CERTS_PRIVATE_KEY \
+          --secret-string "{\"key\":\"$PRIVKEY\"}"
