@@ -75,7 +75,6 @@ jobs:
             --project ${{ secrets.FLUTTERFLOW_WEB_PROJECT_ID }} \
             --dest wonderWhy/flutterFlow/wonder_move_web \
             --include-assets \
-            --branch-name main \
             --no-parent-folder
 
       - name: Check out React and WonderMove site code
