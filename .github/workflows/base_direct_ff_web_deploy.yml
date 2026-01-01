@@ -67,16 +67,6 @@ jobs:
       - name: Create directory structure
         run: mkdir -p wonderWhy/flutterFlow
 
-      - name: Download FlutterFlow project code
-        env:
-          FLUTTERFLOW_API_TOKEN: ${{ secrets.FLUTTERFLOW_API_TOKEN }}
-        run: |
-          flutterflow export-code \
-            --project ${{ secrets.FLUTTERFLOW_WEB_PROJECT_ID }} \
-            --dest wonderWhy/flutterFlow/wonder_move_web \
-            --include-assets \
-            --no-parent-folder
-
       - name: Check out React and WonderMove site code
         uses: actions/checkout@v4
         with:
@@ -96,8 +86,28 @@ jobs:
         with:
           channel: stable
           flutter-version: 3.29.0
+          
+      - name: Download FlutterFlow project code
+        env:
+          FLUTTERFLOW_API_TOKEN: ${{ secrets.FLUTTERFLOW_API_TOKEN }}
+        run: |
+          flutterflow export-code \
+            --project ${{ secrets.FLUTTERFLOW_WEB_PROJECT_ID }} \
+            --dest wonderWhy/flutterFlow/wonder_move_web \
+            --include-assets \
+            --no-parent-folder
 
-      - uses: actions/setup-node@v3
+      - name: build flutter flow web
+        run: |
+          cd wonderWhy/flutterFlow/wonder_move_web
+          flutter clean
+          flutter pub get         
+          flutter build web --release --source-maps
+          rm -rf build/web/canvaskit
+          mv build/web ../../webDeploy/
+          mv ../../webDeploy/web ../../webDeploy/ffWeb
+          
+            - uses: actions/setup-node@v3
         with:
           node-version: '20'
           cache: 'yarn'
@@ -115,16 +125,6 @@ jobs:
         run: |
           cd wonderWhy
           mv wondermoveSite webDeploy/wondermoveSite
-
-      - name: build flutter flow web
-        run: |
-          cd wonderWhy/flutterFlow/wonder_move_web
-          flutter clean
-          flutter pub get         
-          flutter build web --release --source-maps
-          rm -rf build/web/canvaskit
-          mv build/web ../../webDeploy/
-          mv ../../webDeploy/web ../../webDeploy/ffWeb
 
       - name: Brotli compress
         run: |
