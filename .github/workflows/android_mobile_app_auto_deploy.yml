@@ -64,4 +64,5 @@ jobs:
           GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
         run: |
           cd wonderWhy/flutterFlow/wonder_move_mobile/android
+          bundle exec fastlane --version
           bundle exec fastlane upload_to_custom_track
