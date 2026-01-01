@@ -1,31 +1,22 @@
-name: tenantApps Web Deploy
-run-name: tenantApps Web Deploy
+name: QA Flutter Flow Direct Web Deploy
+run-name: QA Web Deploy
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Deployment Environment"
-        required: true
-        default: "qa"
-        type: choice
-        options:
-          - qa
-          - prod
 
 jobs:
   find_latest_version:
     uses: ./.github/workflows/base_get_latest_repo_version.yml
     with:
-      environment: magnum
+      environment: qa
     secrets:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
   qa-web-deploy:
-    uses: ./.github/workflows/base_tenant_web_deploy.yml
+    uses: ./.github/workflows/base_direct_ff_web_deploy.yml
     needs: find_latest_version
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
-      environment: magnum
+      environment: qa
     secrets:
         REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
         EC2_IP: ${{ secrets.EC2_IP }}
@@ -38,7 +29,5 @@ jobs:
         OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
         OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
         OAUTH_MOBILE_APP_CLIENT_ID: ${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}
-        TENANT_OAUTH_CLIENT_ID : ${{ secrets.TENANT_OAUTH_CLIENT_ID }}
-        OAUTH_TENANTAPP_MOBILE_CLIENT_ID : ${{ secrets.OAUTH_TENANTAPP_MOBILE_CLIENT_ID}}
-  
-  
+        FLUTTERFLOW_WEB_PROJECT_ID: ${{ secrets.FLUTTERFLOW_WEB_PROJECT_ID }}
+        FLUTTERFLOW_API_TOKEN: ${{ secrets.FLUTTERFLOW_API_TOKEN }}

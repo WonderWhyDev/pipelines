@@ -1,0 +1,175 @@
+name: Base Flutter Web Deploy
+on:
+  workflow_call:
+    inputs:
+      versionToBuild:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+    secrets:
+        REPO_TOKEN:
+            required: true
+        EC2_IP:
+            required: true
+        AWS_ACCESS_KEY:
+            required: true
+        AWS_SECRET_KEY:
+            required: true
+        AWS_REGION:
+            required: true
+        EC2_USER:
+            required: true
+        SECURITY_GROUP_ID:
+            required: true
+        SSH_PRIVATE_KEY_FOR_EC2:
+            required: true
+        OAUTH_CLIENT_ID:
+            required: true
+        OAUTH_CLIENT_SECRET:
+            required: true
+        OAUTH_MOBILE_APP_CLIENT_ID:
+            required: true
+        FLUTTERFLOW_WEB_PROJECT_ID:
+            required: true
+        FLUTTERFLOW_API_TOKEN:
+            required: true
+    outputs:
+      latest_version: 
+        value: ${{ jobs.build_and_deploy.outputs.latest_version }}
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    outputs:
+      latest_version: ${{ steps.set_version.outputs.latest_version }}
+    steps:
+      - name: Set latest version output
+        id: set_version
+        run: echo "latest_version=${{ inputs.versionToBuild }}" >> $GITHUB_OUTPUT
+
+      - name: check out repository for actions
+        uses: actions/checkout@v4
+
+      - name: Set up Dart SDK
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Install FlutterFlow CLI
+        run: |
+          dart pub global activate flutterflow_cli
+          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+
+      - name: Create directory structure
+        run: mkdir -p wonderWhy/flutterFlow
+
+      - name: Download FlutterFlow project code
+        env:
+          FLUTTERFLOW_API_TOKEN: ${{ secrets.FLUTTERFLOW_API_TOKEN }}
+        run: |
+          flutterflow export-code \
+            --project ${{ secrets.FLUTTERFLOW_WEB_PROJECT_ID }} \
+            --dest wonderWhy/flutterFlow/wonder_move_web \
+            --include-assets \
+            --branch-name main \
+            --no-parent-folder
+
+      - name: Check out React and WonderMove site code
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          ref: ${{ inputs.versionToBuild }}
+          sparse-checkout: |
+            web
+            wondermoveSite
+            yarn.lock
+            package.json
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.29.0
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: 'wonderWhy/yarn.lock'
+
+      - name: build react web
+        run: |
+          cd wonderWhy
+          yarn install
+          yarn workspace web build
+          mkdir webDeploy
+          mv web/dist webDeploy/reactWeb
+
+      - name: build wondermove site
+        run: |
+          cd wonderWhy
+          mv wondermoveSite webDeploy/wondermoveSite
+
+      - name: build flutter flow web
+        run: |
+          cd wonderWhy/flutterFlow/wonder_move_web
+          flutter clean
+          flutter pub get         
+          flutter build web --release --source-maps
+          rm -rf build/web/canvaskit
+          mv build/web ../../webDeploy/
+          mv ../../webDeploy/web ../../webDeploy/ffWeb
+
+      - name: Brotli compress
+        run: |
+          cd wonderWhy/webDeploy
+          sudo apt-get  -y install brotli
+          find ./ -type f -exec brotli -Zkv {} \;
+
+      - run: |
+          cd wonderWhy
+          zip -r webDeploy.zip webDeploy
+
+      - uses: ./.github/actions/copy_to_ec2
+        with:
+           ec2IP: ${{ secrets.EC2_IP }}
+           awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+           awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+           awsRegion: ${{ secrets.AWS_REGION }}
+           ec2User: ${{ secrets.EC2_USER }}
+           securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+           sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+           fileToCopy: ./wonderWhy/webDeploy.zip
+           destination: ~/webDeploy.zip
+           unzipDestination: ~/
+           runScript: |
+             cd webDeploy
+             sudo rm -rf ~/nginx/html
+             mkdir ~/nginx/html
+             mkdir ~/nginx/flutterflow
+             mkdir ~/nginx/config
+             mkdir ~/nginx/wondermoveSite
+             cp -r ffWeb/* ~/nginx/flutterflow/
+             cp -r reactWeb/* ~/nginx/html/
+             cp -r wondermoveSite/* ~/nginx/wondermoveSite/
+             echo "completed copying files"
+             echo '{
+                "authDomain": "https://auth._HOST_",
+                "appBackendDomain": "https://_HOST_",
+                "clientId": "'"${{ secrets.OAUTH_CLIENT_ID }}"'",
+                "redirectUrl": "https://_HOST_",
+                "isDebugAllowed": true,
+                "mobileRedirectUrl":"app://wondermove.in/login",
+                "mobileAppClientId":"'"${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}"'"
+              }' > ~/nginx/config/config.json
+             echo "config.json file created"
+             
+
+
