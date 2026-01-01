@@ -37,6 +37,7 @@ jobs:
 
       - name: Decode Keystore
         run: |
+          ls
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode \
             > flutterFlow/wonder_move_mobile/android/app/keystore.jks
 
