@@ -37,12 +37,13 @@ jobs:
 
       - name: Decode Keystore
         run: |
-          ls
+          cd wonderWhy
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode \
             > flutterFlow/wonder_move_mobile/android/app/keystore.jks
 
       - name: Create key.properties
         run: |
+          cd wonderWhy
           cat <<EOF > flutterFlow/wonder_move_mobile/android/key.properties
           storeFile=keystore.jks
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
@@ -52,7 +53,7 @@ jobs:
 
       - name: Install Fastlane
         run: |
-          cd flutterFlow/wonder_move_mobile/android
+          cd wonderWhy/flutterFlow/wonder_move_mobile/android
           gem install bundler fastlane
           bundle install
 
@@ -60,5 +61,5 @@ jobs:
         env:
           GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
         run: |
-          cd flutterFlow/wonder_move_mobile/android
+          cd wonderWhy/flutterFlow/wonder_move_mobile/android
           bundle exec fastlane upload_to_custom_track
