@@ -55,9 +55,8 @@ jobs:
       - name: Install Fastlane
         run: |
           cd wonderWhy/flutterFlow/wonder_move_mobile/android
-          gem install bundler
-          bundle update fastlane
-          bundle install
+          gem install bundler -v "~> 2.4"
+          bundle _2.4_ install
 
       - name: Build & Upload to Google Play
         env:
