@@ -38,12 +38,12 @@ jobs:
       - name: Decode Keystore
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode \
-            > flutterFlow/wonder_move_mobile/android/app/upload-keystore.jks
+            > flutterFlow/wonder_move_mobile/android/app/keystore.jks
 
       - name: Create key.properties
         run: |
           cat <<EOF > flutterFlow/wonder_move_mobile/android/key.properties
-          storeFile=upload-keystore.jks
+          storeFile=keystore.jks
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
           keyAlias=${{ secrets.KEY_ALIAS }}
           keyPassword=${{ secrets.KEYSTORE_PASSWORD }}
