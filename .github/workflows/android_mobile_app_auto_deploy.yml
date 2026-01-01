@@ -34,6 +34,7 @@ jobs:
           cd wonderWhy
           mkdir -p flutterFlow/wonder_move_mobile/android/fastlane
           cp -r automation/androidFastlane/* flutterFlow/wonder_move_mobile/android/fastlane/
+          cp -r automation/Gemfile flutterFlow/wonder_move_mobile/android/
 
       - name: Decode Keystore
         run: |
