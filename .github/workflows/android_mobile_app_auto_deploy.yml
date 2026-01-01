@@ -1,0 +1,63 @@
+name: Android Auto App Deploy
+run-name: Android Auto App Deploy
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: magnum
+
+    steps:
+      - name: Check out wonderwhy folder
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+
+      - name: Inject Fastlane
+        run: |
+          cd wonderWhy
+          mkdir -p flutterFlow/mobileApp/android/fastlane
+          cp -r automation/androidFastlane/* flutterFlow/mobileApp/android/fastlane/
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode \
+            > flutterFlow/mobileApp/android/app/upload-keystore.jks
+
+      - name: Create key.properties
+        run: |
+          cat <<EOF > flutterFlow/mobileApp/android/key.properties
+          storeFile=upload-keystore.jks
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEYSTORE_PASSWORD }}
+          EOF
+
+      - name: Install Fastlane
+        run: |
+          cd flutterFlow/mobileApp/android
+          gem install bundler fastlane
+          bundle install
+
+      - name: Build & Upload to Google Play
+        env:
+          GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
+        run: |
+          cd flutterFlow/mobileApp/android
+          bundle exec fastlane upload_to_custom_track
