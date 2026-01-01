@@ -107,11 +107,6 @@ jobs:
           mv build/web ../../webDeploy/
           mv ../../webDeploy/web ../../webDeploy/ffWeb
           
-            - uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          cache: 'yarn'
-          cache-dependency-path: 'wonderWhy/yarn.lock'
 
       - name: build react web
         run: |
