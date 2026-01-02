@@ -104,8 +104,11 @@ jobs:
           flutter pub get         
           flutter build web --release --source-maps
           rm -rf build/web/canvaskit
-          mkdir -p webDeploy
+          mkdir -p ../../webDeploy
+          ls ../../webDeploy
           mv build/web ../../webDeploy/
+          ls ../../webDeploy/
+          ls -ls ../../webDeploy/web
           mv ../../webDeploy/web ../../webDeploy/ffWeb
           
 
