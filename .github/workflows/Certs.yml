@@ -31,16 +31,16 @@ jobs:
           --agree-tos \
           --non-interactive \
           --dns-route53-propagation-seconds 60 \
+          --email thinker@wonderwhy.in \
+          --config-dir ./ \
+          --work-dir ./ \
+          --logs-dir /tmp \
+          --rsa-key-size 4096 \
           -d wondermove.in -d wonderwhy.in \
           -d www.wondermove.in -d www.wonderwhy.in \
           -d magnum.wondermove.in -d app.wondermove.in \
           -d auth.magnum.wondermove.in -d auth.app.wondermove.in \
-          -d vijay.wondermove.in -d avd.wondermove.in \
-          --email thinker@wonderwhy.in \
-          --config-dir ./ \
-          --work-dir ./ \
-          --logs-dir /tmp
-          --rsa-key-size 4096
+          -d vijay.wondermove.in -d avd.wondermove.in
 
     - name: Configure AWS CLI
       uses: aws-actions/configure-aws-credentials@v2
