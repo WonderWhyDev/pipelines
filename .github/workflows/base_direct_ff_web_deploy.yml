@@ -104,6 +104,7 @@ jobs:
           flutter pub get         
           flutter build web --release --source-maps
           rm -rf build/web/canvaskit
+          mkdir -p webDeploy
           mv build/web ../../webDeploy/
           mv ../../webDeploy/web ../../webDeploy/ffWeb
           
@@ -113,7 +114,7 @@ jobs:
           cd wonderWhy
           yarn install
           yarn workspace web build
-          mkdir webDeploy
+          mkdir -p webDeploy
           mv web/dist webDeploy/reactWeb
 
       - name: build wondermove site
