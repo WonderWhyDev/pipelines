@@ -59,4 +59,4 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           cd wonderWhy/flutterFlow/wonder_move_mobile/ios
-          bundle exec fastlane upload_to_testflight
+          bundle exec fastlane upload_to_testflight_ios
