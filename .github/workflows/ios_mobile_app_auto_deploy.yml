@@ -1,0 +1,57 @@
+name: iOS Auto App Deploy
+run-name: iOS Auto App Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: macos-latest   # IOS requires macOS
+
+    environment:
+      name: magnum
+
+    steps:
+      - name: Check out wonderwhy folder
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+
+      - name: Inject Fastlane
+        run: |
+          cd wonderWhy
+          mkdir -p flutterFlow/wonder_move_mobile/ios/fastlane
+          cp -r automation/iosFastlane/* flutterFlow/wonder_move_mobile/ios/fastlane/
+          cp -r automation/Gemfile flutterFlow/wonder_move_mobile/ios/
+
+      - name: Install iOS dependencies
+        run: |
+          cd wonderWhy/flutterFlow/wonder_move_mobile
+          flutter pub get
+          cd ios
+          gem install bundler -v "~> 2.7"
+          bundle install
+          pod install
+
+      - name: Build & Upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          cd wonderWhy/flutterFlow/wonder_move_mobile/ios
+          bundle exec fastlane upload_to_testflight
