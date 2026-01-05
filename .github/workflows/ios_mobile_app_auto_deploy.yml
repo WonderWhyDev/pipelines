@@ -29,7 +29,11 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
-          bundler-cache: true
+
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods -v "~> 1.15"
+          pod --version
 
       - name: Inject Fastlane
         run: |
@@ -43,14 +47,15 @@ jobs:
           cd wonderWhy/flutterFlow/wonder_move_mobile
           flutter pub get
           cd ios
-          bundle exec pod install --repo-update
+          gem install bundler -v "~> 2.7"
+          bundle install
+          pod install
 
       - name: Build & Upload to TestFlight
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-          FLUTTER_ROOT: ${{ env.FLUTTER_ROOT }}
         run: |
           cd wonderWhy/flutterFlow/wonder_move_mobile/ios
           bundle exec fastlane upload_to_testflight_ios
