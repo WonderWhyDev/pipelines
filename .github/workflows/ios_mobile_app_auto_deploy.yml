@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: macos-latest   # IOS requires macOS
+    runs-on: macos-latest
 
     environment:
       name: magnum
@@ -29,7 +29,12 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
-          bundler-cache: true
+
+      - name: Fix CocoaPods
+        run: |
+          sudo gem uninstall cocoapods -aIx || true
+          sudo gem install cocoapods -v "~> 1.15"
+          pod --version
 
       - name: Inject Fastlane
         run: |
