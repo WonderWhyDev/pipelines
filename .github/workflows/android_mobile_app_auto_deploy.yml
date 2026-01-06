@@ -28,6 +28,11 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
+          
+      - name: Clear Gradle cache
+        run: |
+          rm -rf ~/.gradle/caches
+          rm -rf ~/.gradle/wrapper
 
       - name: Inject Fastlane
         run: |
