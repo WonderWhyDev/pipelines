@@ -70,22 +70,18 @@ jobs:
 
       - name: Configure Gradle Repositories
         run: |
-          mkdir -p ~/.gradle/init.d
-          cat > ~/.gradle/init.d/repositories.gradle << 'EOF'
-          allprojects {
-              buildscript {
-                  repositories {
-                      google()
-                      mavenCentral()
-                      gradlePluginPortal()
-                  }
-              }
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
+          cd wonderWhy/flutterFlow/wonder_move_mobile/android
+          
+          cat >> gradle.properties << 'EOF'
+          
+          org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
+          android.useAndroidX=true
+          android.enableJetifier=true
           EOF
+          
+          if grep -q "FAIL_ON_PROJECT_REPOS" settings.gradle; then
+            sed -i 's/FAIL_ON_PROJECT_REPOS/PREFER_PROJECT/g' settings.gradle
+          fi
 
       - name: Build & Upload to Google Play
         env:
