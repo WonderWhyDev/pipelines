@@ -24,6 +24,16 @@ jobs:
         with:
           channel: stable
 
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -57,6 +67,25 @@ jobs:
           cd wonderWhy/flutterFlow/wonder_move_mobile/android
           gem install bundler -v "~> 2.7"
           bundle install
+
+      - name: Configure Gradle Repositories
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/repositories.gradle << 'EOF'
+          allprojects {
+              buildscript {
+                  repositories {
+                      google()
+                      mavenCentral()
+                      gradlePluginPortal()
+                  }
+              }
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOF
 
       - name: Build & Upload to Google Play
         env:
