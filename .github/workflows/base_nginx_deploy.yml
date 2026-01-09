@@ -75,7 +75,7 @@ jobs:
           mkdir -p wonderWhy/nginx/certs
           mkdir -p wonderWhy/nginx/site/certs
 
-          # CA Certs
+          # Fetch certs from AWS Secrets Manager
           aws secretsmanager get-secret-value \
             --secret-id CA_CERTS_FULL_CHAIN \
             --query SecretString \
@@ -88,20 +88,11 @@ jobs:
             --output text | jq -r '.key' | base64 -d \
             > wonderWhy/nginx/certs/privkey.pem
 
-          # Website Certs
-          aws secretsmanager get-secret-value \
-            --secret-id WEBSITE_CERT_FULL_CHAIN \
-            --query SecretString \
-            --output text | jq -r '.cert' | base64 -d \
-            > wonderWhy/nginx/site/certs/fullchain.pem
+          # Copy same certs for site
+          cp wonderWhy/nginx/certs/fullchain.pem wonderWhy/nginx/site/certs/fullchain.pem
+          cp wonderWhy/nginx/certs/privkey.pem wonderWhy/nginx/site/certs/privkey.pem
 
-          aws secretsmanager get-secret-value \
-            --secret-id WEBSITE_CERT_PRIVATE_KEY \
-            --query SecretString \
-            --output text | jq -r '.key' | base64 -d \
-            > wonderWhy/nginx/site/certs/privkey.pem
-
-          chmod 600 wonderWhy/nginx/**/certs/*.pem
+          chmod 600 wonderWhy/nginx/certs/*.pem wonderWhy/nginx/site/certs/*.pem
 
       # Zip nginx folder
       - name: Package nginx
