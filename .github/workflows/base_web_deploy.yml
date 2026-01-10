@@ -88,9 +88,12 @@ jobs:
         run: |
           cd wonderWhy/flutterFlow/wonder_move_web
           flutter clean
-          flutter pub get         
+          flutter pub get
           flutter build web --release --source-maps
           rm -rf build/web/canvaskit
+          HASH=$(md5sum build/web/main.dart.js | cut -c1-8)
+          mv build/web/main.dart.js build/web/main.dart.${HASH}.js
+          sed -i "s/main\.dart\.js/main.dart.${HASH}.js/g" build/web/index.html
           mv build/web ../../webDeploy/
           mv ../../webDeploy/web ../../webDeploy/ffWeb
 
