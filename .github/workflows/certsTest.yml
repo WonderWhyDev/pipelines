@@ -1,0 +1,60 @@
+name: Certs Generation for test env
+run-name: ssl certs for all
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-certificate:
+    runs-on: ubuntu-latest
+    environment: 'qa'
+    
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Certbot
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y certbot python3-certbot-dns-route53 
+        
+    - name: Configure AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+       aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+       aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+       aws-region: us-east-1
+        
+    - name: Generate SSL Certificate for wondermove.in
+      run: |
+        certbot certonly \
+          --dns-route53 \
+          --agree-tos \
+          --non-interactive \
+          --dns-route53-propagation-seconds 60 \
+          --email thinker@wonderwhy.in \
+          --config-dir ./ \
+          --work-dir ./ \
+          --logs-dir /tmp \
+          --rsa-key-size 4096 \
+          -d test1.wondermove.in \
+          -d auth.test1.wondermove.in 
+
+    - name: Configure AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region: ap-south-1
+
+    - name: Create Secrets if they don't exist
+      continue-on-error: true
+      run: |
+        aws secretsmanager create-secret --name CA_CERTS_FULL_CHAIN --description "SSL Full Chain Certificate" --region ap-south-1 || echo "Secret CA_CERTS_FULL_CHAIN already exists"
+        aws secretsmanager create-secret --name CA_CERTS_PRIVATE_KEY --description "SSL Private Key" --region ap-south-1 || echo "Secret CA_CERTS_PRIVATE_KEY already exists"
+    
+    - name: Upload Certificates to aws Secrets Manager
+      run: |
+        FULLCHAIN=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem | base64 -w 0)
+        PRIVKEY=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem | base64 -w 0)
+        aws secretsmanager put-secret-value --secret-id CA_CERTS_FULL_CHAIN --secret-string "{\"cert\":\"$FULLCHAIN\"}"
+        aws secretsmanager put-secret-value --secret-id CA_CERTS_PRIVATE_KEY --secret-string "{\"key\":\"$PRIVKEY\"}"
