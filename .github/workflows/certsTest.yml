@@ -37,7 +37,7 @@ jobs:
           --logs-dir /tmp \
           --rsa-key-size 4096 \
           -d test1.wondermove.in \
-          -d auth.test1.wondermove.in || true
+          -d auth.test1.wondermove.in
     
     - name: Print certbot logs
       run: |
