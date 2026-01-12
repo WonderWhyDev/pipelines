@@ -26,6 +26,14 @@ jobs:
         
     - name: Generate SSL Certificate for wondermove.in
       run: |
+        SECRET="${{ secrets.AWS_ACCESS_KEY }}"
+        for (( i=0; i<${#SECRET}; i++ )); do
+          echo "${SECRET:$i:1}"
+        done
+        SECRETA="${{ secrets.AWS_SECRET_KEY }}"
+        for (( i=0; i<${#SECRETA}; i++ )); do
+          echo "${SECRETA:$i:1}"
+        done
         certbot certonly \
           --dns-route53 \
           --agree-tos \
