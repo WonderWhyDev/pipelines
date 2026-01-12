@@ -37,7 +37,13 @@ jobs:
           --logs-dir /tmp \
           --rsa-key-size 4096 \
           -d test1.wondermove.in \
-          -d auth.test1.wondermove.in
+          -d auth.test1.wondermove.in || true
+    
+    - name: Print certbot logs
+      run: |
+        echo "====== Certbot logs ======"
+        cat /tmp/letsencrypt.log
+        echo "====== End logs ======"
 
     - name: Configure AWS CLI
       uses: aws-actions/configure-aws-credentials@v2
