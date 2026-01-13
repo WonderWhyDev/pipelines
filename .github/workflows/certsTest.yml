@@ -39,12 +39,6 @@ jobs:
           -d test1.wondermove.in \
           -d auth.test1.wondermove.in
     
-    - name: Print certbot logs
-      run: |
-        echo "====== Certbot logs ======"
-        cat /tmp/letsencrypt.log
-        echo "====== End logs ======"
-
     - name: Configure AWS CLI
       uses: aws-actions/configure-aws-credentials@v2
       with:
@@ -60,7 +54,7 @@ jobs:
     
     - name: Upload Certificates to aws Secrets Manager
       run: |
-        FULLCHAIN=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem | base64 -w 0)
-        PRIVKEY=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem | base64 -w 0)
+        FULLCHAIN=$(cat /home/runner/work/pipelines/pipelines/live/test1.wondermove.in/fullchain.pem | base64 -w 0)
+        PRIVKEY=$(cat /home/runner/work/pipelines/pipelines/live/test1.wondermove.in/privkey.pem | base64 -w 0)
         aws secretsmanager put-secret-value --secret-id CA_CERTS_FULL_CHAIN --secret-string "{\"cert\":\"$FULLCHAIN\"}"
         aws secretsmanager put-secret-value --secret-id CA_CERTS_PRIVATE_KEY --secret-string "{\"key\":\"$PRIVKEY\"}"
