@@ -1,0 +1,37 @@
+name: Prod Kratos Deploy
+run-name: Prod Kratos Deploy
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment Environment"
+        required: true
+        default: "magnum"
+        type: choice
+        options:
+          - magnum
+
+jobs:
+  find_latest_version:
+    uses: ./.github/workflows/base_get_latest_repo_version.yml
+    with:
+      environment: ${{ inputs.environment }}
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+
+  prod-kratos-deploy:
+    uses: ./.github/workflows/base_kratos_deploy.yml
+    needs: find_latest_version
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: ${{ inputs.environment }}
+    secrets:
+        REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+        EC2_IP: ${{ secrets.EC2_IP }}
+        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        EC2_USER: ${{ secrets.EC2_USER }}
+        SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
+        SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+        DOMAIN: "${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}"
