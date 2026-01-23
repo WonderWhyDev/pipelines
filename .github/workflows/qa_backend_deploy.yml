@@ -52,6 +52,7 @@ jobs:
           yarn b format
           yarn b lint
           yarn b build
+
       - uses: ./.github/actions/upload_version_file
         with:
           version: ${{ needs.find_latest_version.outputs.latest_version }}
@@ -60,13 +61,18 @@ jobs:
           sed -i 's|name: wonderwhy_postgres-network|name: wonderwhy-network|' wonderWhy/backend/deploy/compose.yml
           mkdir backend
           cp -r wonderWhy/backend/prisma backend/
-          cp -r wonderWhy/backend/prisma/migrations backend/prisma/schema/
+          cp -rf wonderWhy/backend/prisma/migrations backend/prisma/schema/
           cp wonderWhy/backend/dist/app.js backend/
-          cp -r wonderWhy/backend/externalPackages backend/externalPackages
+          cp -rf wonderWhy/backend/externalPackages backend/
           cp wonderWhy/backend/package.json backend/
           cp wonderWhy/backend/prisma.config.ts backend/
           cp wonderWhy/backend/deploy/* backend/
           zip -r backend.zip backend
+
+      - name: Decode ICICI .p12
+        run: |
+          echo "${{ secrets.ICICI_KEYSTORE_BASE64 }}" | base64 --decode \
+            > backend/externalPackages/node-composite-sv-build/sdk-composite/config/iciciKey.p12
 
       - uses: ./.github/actions/copy_to_ec2
         with:
