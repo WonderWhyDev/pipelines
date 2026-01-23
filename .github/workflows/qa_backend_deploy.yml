@@ -72,7 +72,7 @@ jobs:
       - name: Decode ICICI .p12
         run: |
           echo "${{ secrets.ICICI_KEYSTORE_BASE64 }}" | base64 --decode \
-            > backend/externalPackages/node-composite-sv-build/sdk-composite/config/iciciKey.p12
+            > backend/externalPackages/icici/node-composite-sv-build/sdk-composite/config/iciciKey.p12
 
       - uses: ./.github/actions/copy_to_ec2
         with:
