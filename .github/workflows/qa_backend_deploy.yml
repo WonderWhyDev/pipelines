@@ -61,6 +61,7 @@ jobs:
           sed -i 's|name: wonderwhy_postgres-network|name: wonderwhy-network|' wonderWhy/backend/deploy/compose.yml
           mkdir backend
           cp -r wonderWhy/backend/prisma backend/
+          cp -rf wonderWhy/backend/assets backend/
           cp -rf wonderWhy/backend/prisma/migrations backend/prisma/schema/
           cp wonderWhy/backend/dist/app.js backend/
           cp -rf wonderWhy/backend/externalPackages backend/
@@ -128,9 +129,10 @@ jobs:
       - run: |
           mkdir backend
           cp -r wonderWhy/backend/prisma backend/
-          cp -r wonderWhy/backend/prisma/migrations backend/prisma/schema/
+          cp -rf wonderWhy/backend/assets backend/
+          cp -rf wonderWhy/backend/prisma/migrations backend/prisma/schema/
           cp wonderWhy/backend/dist/app.js backend/
-          cp -r wonderWhy/backend/externalPackages backend/externalPackages
+          cp -rf wonderWhy/backend/externalPackages backend/externalPackages
           cp wonderWhy/backend/package.json backend/
           cp wonderWhy/backend/prisma.config.ts backend/
           cp wonderWhy/backend/deploy/* backend/
