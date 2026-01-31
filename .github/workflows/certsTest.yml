@@ -35,6 +35,7 @@ jobs:
           --config-dir ./ \
           --work-dir ./ \
           --logs-dir /tmp \
+          --key-type rsa \
           --rsa-key-size 4096 \
           -d test1.wondermove.in \
           -d auth.test1.wondermove.in
