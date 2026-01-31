@@ -89,7 +89,7 @@ jobs:
           unzipDestination: ~/
           runScript: |
             cd backend
-            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }}  ${{ secrets.ZITADEL_PAT }} "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" ${{ secrets.GEN_AI_GOOGLE_API }} ${{ secrets.WHATSAPP_VERIFY_TOKEN }} ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }}  ${{ secrets.ZITADEL_PAT }} "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" ${{ secrets.GEN_AI_GOOGLE_API }} ${{ secrets.WHATSAPP_VERIFY_TOKEN }} ${{ secrets.WHATSAPP_ACCESS_TOKEN }} ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
 
   prod_deploy:
     runs-on: ubuntu-latest
@@ -152,5 +152,5 @@ jobs:
           unzipDestination: ~/
           runScript: |
             cd backend
-            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }}  ${{ secrets.ZITADEL_PAT }}  "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" ${{ secrets.GEN_AI_GOOGLE_API }} ${{ secrets.WHATSAPP_VERIFY_TOKEN }} ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }}  ${{ secrets.ZITADEL_PAT }}  "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" ${{ secrets.GEN_AI_GOOGLE_API }} ${{ secrets.WHATSAPP_VERIFY_TOKEN }} ${{ secrets.WHATSAPP_ACCESS_TOKEN }} ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
 
