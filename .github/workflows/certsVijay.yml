@@ -39,19 +39,29 @@ jobs:
           --rsa-key-size 4096 \
           -d vijay.wondermove.in
 
-    - name: Setup SSH Key
+    - name: Zip Certificates
       run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+        zip -j vijay_certs.zip ./live/vijay.wondermove.in/fullchain.pem ./live/vijay.wondermove.in/privkey.pem
 
     - name: Copy Certificates to EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo mkdir -p /etc/nginx/certs/vijay"
-        scp ./live/vijay.wondermove.in/fullchain.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/fullchain.pem
-        scp ./live/vijay.wondermove.in/privkey.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/privkey.pem
-        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo mv /tmp/fullchain.pem /etc/nginx/certs/vijay/ && sudo mv /tmp/privkey.pem /etc/nginx/certs/vijay/"
-        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo chown -R root:root /etc/nginx/certs/vijay && sudo chmod 600 /etc/nginx/certs/vijay/*"
+      uses: ./.github/actions/copy_to_ec2
+      with:
+        ec2IP: ${{ secrets.EC2_IP }}
+        awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+        awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+        awsRegion: ${{ secrets.AWS_REGION }}
+        ec2User: ${{ secrets.EC2_USER }}
+        securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+        sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+        fileToCopy: ./vijay_certs.zip
+        destination: ~/vijay_certs.zip
+        runScript: |
+          sudo mkdir -p /etc/nginx/certs/vijay
+          unzip -o ~/vijay_certs.zip -d /tmp/vijay_certs
+          sudo mv /tmp/vijay_certs/fullchain.pem /etc/nginx/certs/vijay/
+          sudo mv /tmp/vijay_certs/privkey.pem /etc/nginx/certs/vijay/
+          sudo chown -R root:root /etc/nginx/certs/vijay
+          sudo chmod 600 /etc/nginx/certs/vijay/*
+          rm -rf ~/vijay_certs.zip /tmp/vijay_certs
 
 
