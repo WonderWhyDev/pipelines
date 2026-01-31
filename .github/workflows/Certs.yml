@@ -36,6 +36,7 @@ jobs:
           --work-dir ./ \
           --logs-dir /tmp \
           --rsa-key-size 4096 \
+          --key-type rsa \
           -d wondermove.in -d wonderwhy.in \
           -d www.wondermove.in -d www.wonderwhy.in \
           -d magnum.wondermove.in -d app.wondermove.in \
