@@ -131,7 +131,7 @@ jobs:
              cp -r wondermoveSite/* ~/nginx/wondermoveSite/
              echo "completed copying files"
              echo '{
-                "authDomain": "https://auth._HOST_",
+                "authDomain": "https://auth.app.wondermove.in",
                 "appBackendDomain": "https://_HOST_",
                 "clientId": "'"${{ secrets.OAUTH_CLIENT_ID }}"'",
                 "redirectUrl": "https://_HOST_",
