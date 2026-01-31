@@ -84,6 +84,11 @@ jobs:
           cd wonderWhy
           mv wondermoveSite webDeploy/wondermoveSite
 
+      - name: build vijay bulk transport site
+        run: |
+          cd wonderWhy
+          mv vijayBulkTransport webDeploy/vijayBulkTransport
+
       - name: build flutter flow web
         run: |
           cd wonderWhy/flutterFlow/wonder_move_web
@@ -126,9 +131,11 @@ jobs:
              mkdir ~/nginx/flutterflow
              mkdir ~/nginx/config
              mkdir ~/nginx/wondermoveSite
+             mkdir ~/nginx/vijayBulkTransport
              cp -r ffWeb/* ~/nginx/flutterflow/
              cp -r reactWeb/* ~/nginx/html/
              cp -r wondermoveSite/* ~/nginx/wondermoveSite/
+             cp -r vijayBulkTransport/* ~/nginx/vijayBulkTransport/
              echo "completed copying files"
              echo '{
                 "authDomain": "https://auth._HOST_",

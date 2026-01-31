@@ -56,12 +56,9 @@ jobs:
         fileToCopy: ./vijay_certs.zip
         destination: ~/vijay_certs.zip
         runScript: |
-          sudo mkdir -p /etc/nginx/certs/vijay
-          unzip -o ~/vijay_certs.zip -d /tmp/vijay_certs
-          sudo mv /tmp/vijay_certs/fullchain.pem /etc/nginx/certs/vijay/
-          sudo mv /tmp/vijay_certs/privkey.pem /etc/nginx/certs/vijay/
-          sudo chown -R root:root /etc/nginx/certs/vijay
-          sudo chmod 600 /etc/nginx/certs/vijay/*
-          rm -rf ~/vijay_certs.zip /tmp/vijay_certs
+          cd ~/nginx/certs
+          mkdir -p vijay
+          unzip -o ~/vijay_certs.zip -d vijay
+          rm ~/vijay_certs.zip
 
 

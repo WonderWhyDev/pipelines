@@ -78,6 +78,7 @@ jobs:
           sparse-checkout: |
             web
             wondermoveSite
+            vijayBulkTransport
             yarn.lock
             package.json
 
@@ -125,6 +126,11 @@ jobs:
           cd wonderWhy
           mv wondermoveSite webDeploy/wondermoveSite
 
+      - name: build vijay bulk transport site
+        run: |
+          cd wonderWhy
+          mv vijayBulkTransport webDeploy/vijayBulkTransport
+
       - name: Brotli compress
         run: |
           cd wonderWhy/webDeploy
@@ -154,9 +160,11 @@ jobs:
              mkdir ~/nginx/flutterflow
              mkdir ~/nginx/config
              mkdir ~/nginx/wondermoveSite
+             mkdir ~/nginx/vijayBulkTransport
              cp -r ffWeb/* ~/nginx/flutterflow/
              cp -r reactWeb/* ~/nginx/html/
              cp -r wondermoveSite/* ~/nginx/wondermoveSite/
+             cp -r vijayBulkTransport/* ~/nginx/vijayBulkTransport/
              echo "completed copying files"
              echo '{
                 "authDomain": "https://auth._HOST_",

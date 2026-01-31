@@ -88,6 +88,11 @@ jobs:
           cd wonderWhy
           mv wondermoveSite webDeploy/wondermoveSite
 
+      - name: build vijay bulk transport site
+        run: |
+          cd wonderWhy
+          mv vijayBulkTransport webDeploy/vijayBulkTransport
+
       - name: build flutter flow web
         run: |
           cd wonderWhy/flutterFlow/magnum
