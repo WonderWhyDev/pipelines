@@ -1,0 +1,57 @@
+name: Certs Generation for Vijay
+run-name: ssl certs for vijay.wondermove.in
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-certificate:
+    runs-on: ubuntu-latest
+    environment: 'magnum'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Certbot
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y certbot python3-certbot-dns-route53
+
+    - name: Configure AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+       aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+       aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+       aws-region: us-east-1
+
+    - name: Generate SSL Certificate for vijay.wondermove.in
+      run: |
+        certbot certonly \
+          --dns-route53 \
+          --agree-tos \
+          --non-interactive \
+          --dns-route53-propagation-seconds 60 \
+          --email thinker@wonderwhy.in \
+          --config-dir ./ \
+          --work-dir ./ \
+          --logs-dir /tmp \
+          --key-type rsa \
+          --rsa-key-size 4096 \
+          -d vijay.wondermove.in
+
+    - name: Setup SSH Key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Copy Certificates to EC2
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo mkdir -p /etc/nginx/certs/vijay"
+        scp ./live/vijay.wondermove.in/fullchain.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/fullchain.pem
+        scp ./live/vijay.wondermove.in/privkey.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/privkey.pem
+        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo mv /tmp/fullchain.pem /etc/nginx/certs/vijay/ && sudo mv /tmp/privkey.pem /etc/nginx/certs/vijay/"
+        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo chown -R root:root /etc/nginx/certs/vijay && sudo chmod 600 /etc/nginx/certs/vijay/*"
+
+
