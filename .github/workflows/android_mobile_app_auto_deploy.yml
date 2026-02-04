@@ -96,4 +96,4 @@ jobs:
           cd wonderWhy/flutterFlow/wonder_move_mobile/android
           sed -i 's/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/g' app/build.gradle
           bundle exec fastlane --version
-          bundle exec fastlane upload_to_open_testing
+          bundle exec fastlane upload_to_production
