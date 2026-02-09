@@ -73,16 +73,11 @@ runs:
     - name: Add remote host to known_hosts
       shell: bash
       run: |
-        echo "1"
         mkdir -p ~/.ssh
-        echo "2"
         chmod 700 ~/.ssh
-        echo "3"
         echo inputs.ec2IP
         ssh-keyscan -H ${{ inputs.ec2IP }} >> ~/.ssh/known_hosts
-        echo "4"
         chmod 644 ~/.ssh/known_hosts
-        echo "5"
 
     - name: Copy ZIP FILE to EC2
       shell: bash
