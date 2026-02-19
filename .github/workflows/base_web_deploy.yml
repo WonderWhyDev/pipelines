@@ -94,7 +94,7 @@ jobs:
           cd wonderWhy/flutterFlow/wonder_move_web
           flutter clean
           flutter pub get
-          flutter build web --release --source-maps
+          flutter build web --release --web-renderer html
           HASH=$(md5sum build/web/main.dart.js | cut -c1-8)
           mv build/web/main.dart.js build/web/main.dart.${HASH}.js
           sed -i "s/main\.dart\.js/main.dart.${HASH}.js/g" build/web/index.html
