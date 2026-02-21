@@ -47,7 +47,7 @@ jobs:
           cache-dependency-path: 'wonderWhy/yarn.lock'
       - run: |
           cd wonderWhy
-          yarn install --force
+          yarn install 
           # yarn b prismaUp
           yarn b format
           yarn b lint
@@ -68,6 +68,7 @@ jobs:
           cp wonderWhy/backend/package.json backend/
           cp wonderWhy/backend/prisma.config.ts backend/
           cp wonderWhy/backend/deploy/* backend/
+          cp -r wonderWhy/node_modules backend/
 
       - name: Decode ICICI .p12
         run: |
@@ -132,7 +133,7 @@ jobs:
 
       - run: |
           cd wonderWhy
-          yarn install --force
+          yarn install 
           # yarn b prismaUp
           yarn b format
           yarn b lint
@@ -151,6 +152,7 @@ jobs:
           cp wonderWhy/backend/package.json backend/
           cp wonderWhy/backend/prisma.config.ts backend/
           cp wonderWhy/backend/deploy/* backend/
+          cp -r wonderWhy/node_modules backend/
 
       - name: Decode ICICI .p12
         run: |
