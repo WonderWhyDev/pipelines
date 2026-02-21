@@ -103,8 +103,7 @@ jobs:
               ${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }} \
               ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
               ${{ secrets.COMPOSITE_API_KEY }} \
-              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} \
-              ${{ secrets.ICICI_SDK_CONFIG_PATH }} 
+              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} 
 
 
   prod_deploy:
@@ -133,7 +132,7 @@ jobs:
 
       - run: |
           cd wonderWhy
-          yarn install
+          yarn install --force
           # yarn b prismaUp
           yarn b format
           yarn b lint
@@ -187,5 +186,4 @@ jobs:
               ${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }} \
               ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
               ${{ secrets.COMPOSITE_API_KEY }} \
-              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} \
-              ${{ secrets.ICICI_SDK_CONFIG_PATH }} 
+              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} 
