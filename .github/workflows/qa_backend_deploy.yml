@@ -89,7 +89,23 @@ jobs:
           unzipDestination: ~/
           runScript: |
             cd backend
-            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }}  ${{ secrets.ZITADEL_PAT }} "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" ${{ secrets.GEN_AI_GOOGLE_API }} ${{ secrets.WHATSAPP_VERIFY_TOKEN }} ${{ secrets.WHATSAPP_ACCESS_TOKEN }} ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }} ${{ secrets.WHATSAPP_FUEL_FLOW_ID }} ${{ secrets.WHATSAPP_SHORTAGE_FLOW_ID }} ${{ secrets.WHATSAPP_LR_FLOW_ID }}
+            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} \
+              ${{ secrets.ZITADEL_PAT }} \
+              "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" \
+              ${{ secrets.GEN_AI_GOOGLE_API }} \
+              ${{ secrets.WHATSAPP_VERIFY_TOKEN }} \
+              ${{ secrets.WHATSAPP_ACCESS_TOKEN }} \
+              ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }} \
+              ${{ secrets.WHATSAPP_FUEL_FLOW_ID }} \
+              ${{ secrets.WHATSAPP_SHORTAGE_FLOW_ID }} \
+              ${{ secrets.WHATSAPP_LR_FLOW_ID }} \
+              ${{ secrets.COMPOSITE_KEYSTORE_PATH }} \
+              ${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }} \
+              ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
+              ${{ secrets.COMPOSITE_API_KEY }} \
+              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} \
+              ${{ secrets.ENV_TYPE }} \
+              ${{ secrets.SV_ENABLE }} 
 
   prod_deploy:
     runs-on: ubuntu-latest
