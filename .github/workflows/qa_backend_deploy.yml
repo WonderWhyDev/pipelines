@@ -136,6 +136,11 @@ jobs:
           cp wonderWhy/backend/package.json backend/
           cp wonderWhy/backend/prisma.config.ts backend/
           cp wonderWhy/backend/deploy/* backend/
+
+      - name: Decode ICICI .p12
+        run: |
+          echo "${{ secrets.ICICI_KEYSTORE_BASE64 }}" | base64 --decode \
+            > backend/externalPackages/icici/node-composite-sv-build/sdk-composite/config/iciciKey.p12
           zip -r backend.zip backend
 
       - uses: ./.github/actions/copy_to_ec2
