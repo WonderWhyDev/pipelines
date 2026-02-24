@@ -88,6 +88,14 @@ jobs:
         run: |
           cd wonderWhy
           mv vijayBulkTransport webDeploy/vijayBulkTransport
+      
+      - name: Buil flutter web
+        run: |
+          cd wonderWhy/flutter/apps/wondermove_web
+          flutter clean                                                                                                                                                                                         
+          flutter pub get                                                                                                                                                                                       
+          flutter build web --release --source-maps
+          mv build/web ../../../webDeploy/flutterWeb
 
       - name: build flutter flow web
         run: |
@@ -134,6 +142,7 @@ jobs:
              mkdir ~/nginx/vijayBulkTransport
              cp -r ffWeb/* ~/nginx/flutterflow/
              cp -r reactWeb/* ~/nginx/html/
+             cp -r flutterWeb/* ~/nginx/flutterWeb/
              cp -r wondermoveSite/* ~/nginx/wondermoveSite/
              cp -r vijayBulkTransport/* ~/nginx/vijayBulkTransport/
              echo "completed copying files"
