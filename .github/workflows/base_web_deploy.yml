@@ -140,6 +140,7 @@ jobs:
              mkdir ~/nginx/config
              mkdir ~/nginx/wondermoveSite
              mkdir ~/nginx/vijayBulkTransport
+             mkdir ~/nginx/flutterWeb
              cp -r ffWeb/* ~/nginx/flutterflow/
              cp -r reactWeb/* ~/nginx/html/
              cp -r flutterWeb/* ~/nginx/flutterWeb/
