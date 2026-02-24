@@ -176,9 +176,4 @@ jobs:
               ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }} \
               ${{ secrets.WHATSAPP_FUEL_FLOW_ID }} \
               ${{ secrets.WHATSAPP_SHORTAGE_FLOW_ID }} \
-              ${{ secrets.WHATSAPP_LR_FLOW_ID }} \
-              ${{ secrets.COMPOSITE_KEYSTORE_PATH }} \
-              ${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }} \
-              ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
-              ${{ secrets.COMPOSITE_API_KEY }} \
-              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} 
+              ${{ secrets.WHATSAPP_LR_FLOW_ID }}
