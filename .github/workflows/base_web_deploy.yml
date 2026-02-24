@@ -94,7 +94,7 @@ jobs:
           cd wonderWhy/flutter/apps/wondermove_web
           flutter clean                                                                                                                                                                                         
           flutter pub get                                                                                                                                                                                       
-          flutter build web --release --source-maps
+          flutter build web --release --source-maps --base-href=/flutterWeb/
           rm -rf build/web/canvaskit
           HASH=$(md5sum build/web/main.dart.js | cut -c1-8)
           mv build/web/main.dart.js build/web/main.dart.${HASH}.js
