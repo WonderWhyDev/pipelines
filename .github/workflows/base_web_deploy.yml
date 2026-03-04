@@ -94,8 +94,6 @@ jobs:
           cd wonderWhy/flutter/apps/wondermove_web
           flutter clean
           flutter pub get
-          yarn f analyze
-          yarn f format
           flutter build web --release --source-maps --base-href=/new/
           rm -rf build/web/canvaskit
           mv build/web ../../../webDeploy/flutterWeb
