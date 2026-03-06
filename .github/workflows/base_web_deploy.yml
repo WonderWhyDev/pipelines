@@ -98,6 +98,15 @@ jobs:
           rm -rf build/web/canvaskit
           mv build/web ../../../webDeploy/flutterWeb
 
+      - name: Build wondermake flutter web
+        run: |
+          cd wonderWhy/flutter/apps/wondermake_web
+          flutter clean
+          flutter pub get
+          flutter build web --release --source-maps --base-href=/make/
+          rm -rf build/web/canvaskit
+          mv build/web ../../../webDeploy/flutterMakeWeb
+
       - name: build flutter flow web
         run: |
           cd wonderWhy/flutterFlow/wonder_move_web
@@ -142,9 +151,11 @@ jobs:
              mkdir ~/nginx/wondermoveSite
              mkdir ~/nginx/vijayBulkTransport
              mkdir ~/nginx/flutterWeb
+             mkdir ~/nginx/flutterMakeWeb
              cp -r ffWeb/* ~/nginx/flutterflow/
              cp -r reactWeb/* ~/nginx/html/
              cp -r flutterWeb/* ~/nginx/flutterWeb/
+             cp -r flutterMakeWeb/* ~/nginx/flutterMakeWeb/
              cp -r wondermoveSite/* ~/nginx/wondermoveSite/
              cp -r vijayBulkTransport/* ~/nginx/vijayBulkTransport/
              echo "completed copying files"
