@@ -77,14 +77,15 @@ jobs:
       - name: Configure Gradle Repositories
         run: |
           cd wonderWhy/flutterFlow/wonder_move_mobile/android
-          
+
           cat >> gradle.properties << 'EOF'
-          
-          org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
+
+          org.gradle.jvmargs=-Xmx4096m
           android.useAndroidX=true
           android.enableJetifier=true
+          android.jetifier.ignorelist=arm64_v8a_release,x86_64_release,armeabi_v7a_release,x86_release
           EOF
-          
+
           if grep -q "FAIL_ON_PROJECT_REPOS" settings.gradle; then
             sed -i 's/FAIL_ON_PROJECT_REPOS/PREFER_PROJECT/g' settings.gradle
           fi
