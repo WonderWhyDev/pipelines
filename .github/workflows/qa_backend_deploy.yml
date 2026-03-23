@@ -103,7 +103,8 @@ jobs:
               ${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }} \
               ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
               ${{ secrets.COMPOSITE_API_KEY }} \
-              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }}
+              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} \
+              ${{ secrets.ENV_TYPE }}
 
   prod_deploy:
     runs-on: ubuntu-latest
@@ -185,4 +186,5 @@ jobs:
               ${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }} \
               ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
               ${{ secrets.COMPOSITE_API_KEY }} \
-              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }}
+              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} \
+              ${{ secrets.ENV_TYPE }}
