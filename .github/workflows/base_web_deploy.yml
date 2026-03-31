@@ -106,11 +106,6 @@ jobs:
           cd wonderWhy/flutter/apps/wondermove_web
           dart run build_runner build --delete-conflicting-outputs
 
-      - name: Generate code (wondermake_web)
-        run: |
-          cd wonderWhy/flutter/apps/wondermake_web
-          dart run build_runner build --delete-conflicting-outputs
-
       - name: Build flutter web
         run: |
           cd wonderWhy/flutter/apps/wondermove_web
