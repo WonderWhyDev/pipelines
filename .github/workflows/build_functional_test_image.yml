@@ -2,9 +2,7 @@ name: Build Functional Test Image
 
 on:
   workflow_dispatch:
-    secrets:
-      REPO_TOKEN:
-        required: true
+
 
 env:
   REGISTRY: ghcr.io
@@ -22,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: WonderWhyDev/wonderWhy
-          token: ${{ secrets.REPO_TOKEN }}
+          token: ${{ secrets.REPO_READ_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
           sparse-checkout: functional-test/Dockerfile
@@ -37,7 +35,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.REPO_TOKEN }}
+          password: ${{ secrets.REPO_READ_TOKEN }}
 
       - uses: docker/build-push-action@v5
         with:
