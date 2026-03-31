@@ -1,10 +1,6 @@
 name: Build Functional Test Image
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'functional-test/Dockerfile'
   workflow_dispatch:
 
 env:
@@ -19,9 +15,15 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout wonderWhy repo
+        uses: actions/checkout@v4
         with:
           repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          sparse-checkout: functional-test/Dockerfile
+          sparse-checkout-cone-mode: false
 
       - uses: docker/setup-qemu-action@v3
 
@@ -35,8 +37,8 @@ jobs:
 
       - uses: docker/build-push-action@v5
         with:
-          context: .
-          file: functional-test/Dockerfile
+          context: wonderWhy
+          file: wonderWhy/functional-test/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
