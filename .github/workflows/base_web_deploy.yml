@@ -120,6 +120,12 @@ jobs:
           rm -rf build/web/canvaskit
           mv build/web ../../../webDeploy/flutterMakeWeb
 
+      - name: Strip bundled fonts from FlutterFlow pubspecs
+        run: |
+          cd wonderWhy/flutterFlow/wonder_move_web
+          sed -i '/^  fonts:$/,/^  [^ ]/{ /^  fonts:$/d; /^    /d; }' pubspec.yaml
+          sed -i '/^  fonts:$/,/^  [^ ]/{ /^  fonts:$/d; /^    /d; }' dependencies/login_dljfie/pubspec.yaml
+
       - name: build flutter flow web
         run: |
           cd wonderWhy/flutterFlow/wonder_move_web
