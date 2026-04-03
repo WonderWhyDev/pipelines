@@ -115,5 +115,11 @@ jobs:
           destination: ~/nginx.zip
           unzipDestination: ~/
           runScript: |
+            echo "===== Stage 1: Deploy Nginx ====="
             cd nginx
             sh deploy.sh ${{ secrets.DOMAIN_NAME }}
+
+            echo ""
+            echo "===== Stage 2: Deploy fail2ban ====="
+            cd ~/nginx/fail2ban
+            sh deploy.sh
