@@ -9,30 +9,30 @@ on:
         required: true
         type: string
     secrets:
-        REPO_TOKEN:
-            required: true
-        EC2_IP:
-            required: true
-        AWS_ACCESS_KEY:
-            required: true
-        AWS_SECRET_KEY:
-            required: true
-        AWS_REGION:
-            required: true
-        EC2_USER:
-            required: true
-        SECURITY_GROUP_ID:
-            required: true
-        SSH_PRIVATE_KEY_FOR_EC2:
-            required: true
-        OAUTH_CLIENT_ID:
-            required: true
-        OAUTH_CLIENT_SECRET:
-            required: true
-        OAUTH_MOBILE_APP_CLIENT_ID:
-            required: true
+      REPO_TOKEN:
+        required: true
+      EC2_IP:
+        required: true
+      AWS_ACCESS_KEY:
+        required: true
+      AWS_SECRET_KEY:
+        required: true
+      AWS_REGION:
+        required: true
+      EC2_USER:
+        required: true
+      SECURITY_GROUP_ID:
+        required: true
+      SSH_PRIVATE_KEY_FOR_EC2:
+        required: true
+      OAUTH_CLIENT_ID:
+        required: true
+      OAUTH_CLIENT_SECRET:
+        required: true
+      OAUTH_MOBILE_APP_CLIENT_ID:
+        required: true
     outputs:
-      latest_version: 
+      latest_version:
         value: ${{ jobs.build_and_deploy.outputs.latest_version }}
 
 jobs:
@@ -57,7 +57,7 @@ jobs:
           token: ${{ secrets.REPO_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
-          ref :  ${{ inputs.versionToBuild }}
+          ref: ${{ inputs.versionToBuild }}
 
       - name: Set up Flutter SDK
         uses: subosito/flutter-action@v2
@@ -67,9 +67,9 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
-          node-version: '20'
-          cache: 'yarn'
-          cache-dependency-path: 'wonderWhy/yarn.lock'
+          node-version: "20"
+          cache: "yarn"
+          cache-dependency-path: "wonderWhy/yarn.lock"
 
       - name: build react web
         run: |
@@ -88,7 +88,7 @@ jobs:
         run: |
           cd wonderWhy
           mv vijayBulkTransport webDeploy/vijayBulkTransport
-      
+
       - name: Install Flutter dependencies
         run: |
           cd wonderWhy/flutter/packages/auth_core && dart pub get
@@ -111,6 +111,9 @@ jobs:
           cd wonderWhy/flutter/apps/wondermove_web
           flutter build web --release --source-maps
           rm -rf build/web/canvaskit
+          HASH=$(md5sum build/web/main.dart.js | cut -c1-8)
+          mv build/web/main.dart.js build/web/main.dart.${HASH}.js
+          find build/web -maxdepth 1 \( -name '*.html' -o -name '*.js' \) -exec sed -i "s/main\.dart\.js/main.dart.${HASH}.js/g" {} +
           mv build/web ../../../webDeploy/flutterWeb
 
       - name: Build wondermake flutter web
@@ -118,6 +121,9 @@ jobs:
           cd wonderWhy/flutter/apps/wondermake_web
           flutter build web --release --source-maps
           rm -rf build/web/canvaskit
+          HASH=$(md5sum build/web/main.dart.js | cut -c1-8)
+          mv build/web/main.dart.js build/web/main.dart.${HASH}.js
+          find build/web -maxdepth 1 \( -name '*.html' -o -name '*.js' \) -exec sed -i "s/main\.dart\.js/main.dart.${HASH}.js/g" {} +
           mv build/web ../../../webDeploy/flutterMakeWeb
 
       - name: Strip bundled fonts from FlutterFlow pubspecs
@@ -151,43 +157,40 @@ jobs:
 
       - uses: ./.github/actions/copy_to_ec2
         with:
-           ec2IP: ${{ secrets.EC2_IP }}
-           awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
-           awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
-           awsRegion: ${{ secrets.AWS_REGION }}
-           ec2User: ${{ secrets.EC2_USER }}
-           securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
-           sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-           fileToCopy: ./wonderWhy/webDeploy.zip
-           destination: ~/webDeploy.zip
-           unzipDestination: ~/
-           runScript: |
-             cd webDeploy
-             sudo rm -rf ~/nginx/html
-             mkdir ~/nginx/html
-             mkdir ~/nginx/flutterflow
-             mkdir ~/nginx/config
-             mkdir ~/nginx/wondermoveSite
-             mkdir ~/nginx/vijayBulkTransport
-             mkdir ~/nginx/flutterWeb
-             mkdir ~/nginx/flutterMakeWeb
-             cp -r ffWeb/* ~/nginx/flutterflow/
-             cp -r reactWeb/* ~/nginx/html/
-             cp -r flutterWeb/* ~/nginx/flutterWeb/
-             cp -r flutterMakeWeb/* ~/nginx/flutterMakeWeb/
-             cp -r wondermoveSite/* ~/nginx/wondermoveSite/
-             cp -r vijayBulkTransport/* ~/nginx/vijayBulkTransport/
-             echo "completed copying files"
-             echo '{
-                "authDomain": "https://auth._HOST_",
-                "appBackendDomain": "https://_HOST_",
-                "clientId": "'"${{ secrets.OAUTH_CLIENT_ID }}"'",
-                "redirectUrl": "https://_HOST_",
-                "isDebugAllowed": true,
-                "mobileRedirectUrl":"app://wondermove.in/login",
-                "mobileAppClientId":"'"${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}"'"
-              }' > ~/nginx/config/config.json
-             echo "config.json file created"
-             
-
-
+          ec2IP: ${{ secrets.EC2_IP }}
+          awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+          awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+          awsRegion: ${{ secrets.AWS_REGION }}
+          ec2User: ${{ secrets.EC2_USER }}
+          securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+          sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+          fileToCopy: ./wonderWhy/webDeploy.zip
+          destination: ~/webDeploy.zip
+          unzipDestination: ~/
+          runScript: |
+            cd webDeploy
+            sudo rm -rf ~/nginx/html
+            mkdir ~/nginx/html
+            mkdir ~/nginx/flutterflow
+            mkdir ~/nginx/config
+            mkdir ~/nginx/wondermoveSite
+            mkdir ~/nginx/vijayBulkTransport
+            mkdir ~/nginx/flutterWeb
+            mkdir ~/nginx/flutterMakeWeb
+            cp -r ffWeb/* ~/nginx/flutterflow/
+            cp -r reactWeb/* ~/nginx/html/
+            cp -r flutterWeb/* ~/nginx/flutterWeb/
+            cp -r flutterMakeWeb/* ~/nginx/flutterMakeWeb/
+            cp -r wondermoveSite/* ~/nginx/wondermoveSite/
+            cp -r vijayBulkTransport/* ~/nginx/vijayBulkTransport/
+            echo "completed copying files"
+            echo '{
+               "authDomain": "https://auth._HOST_",
+               "appBackendDomain": "https://_HOST_",
+               "clientId": "'"${{ secrets.OAUTH_CLIENT_ID }}"'",
+               "redirectUrl": "https://_HOST_",
+               "isDebugAllowed": true,
+               "mobileRedirectUrl":"app://wondermove.in/login",
+               "mobileAppClientId":"'"${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}"'"
+             }' > ~/nginx/config/config.json
+            echo "config.json file created"
