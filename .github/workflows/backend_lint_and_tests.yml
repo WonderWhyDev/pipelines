@@ -1,17 +1,37 @@
 name: Backend Lint & Tests
-run-name: Backend Lint & Tests - ${{ inputs.versionToBuild }}
+run-name: Backend Lint & Tests - ${{ inputs.branch }}
 
 on:
   workflow_dispatch:
     inputs:
-      versionToBuild:
-        description: 'wonderWhy ref to build/test (branch, tag, or SHA)'
+      branch:
+        description: 'wonderWhy branch to build/test'
         required: true
         type: string
         default: main
 
 jobs:
+  find_latest_version:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_version: ${{ steps.get_version.outputs.latest_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.branch }}
+          fetch-depth: 1
+          sparse-checkout: '.gitignore'
+          sparse-checkout-cone-mode: false
+      - id: get_version
+        run: |
+          latest_version=$(git log -1 --format=%H)
+          echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
+          echo "Resolved ${{ inputs.branch }} to $latest_version"
+
   Lint:
+    needs: find_latest_version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +40,7 @@ jobs:
           token: ${{ secrets.REPO_READ_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
-          ref: ${{ inputs.versionToBuild }}
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
       - uses: actions/setup-node@v3
         with:
           node-version: '24.11.1'
@@ -35,7 +55,7 @@ jobs:
           yarn b checkVersion
 
   Tests:
-    needs: Lint
+    needs: find_latest_version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +64,7 @@ jobs:
           token: ${{ secrets.REPO_READ_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
-          ref: ${{ inputs.versionToBuild }}
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
       - uses: actions/setup-node@v3
         with:
           node-version: '24.11.1'
