@@ -1,0 +1,56 @@
+name: Backend Lint & Tests
+run-name: Backend Lint & Tests - ${{ inputs.versionToBuild }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionToBuild:
+        description: 'wonderWhy ref to build/test (branch, tag, or SHA)'
+        required: true
+        type: string
+        default: main
+
+jobs:
+  Lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          ref: ${{ inputs.versionToBuild }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '24.11.1'
+          cache: 'yarn'
+          cache-dependency-path: wonderWhy/yarn.lock
+      - working-directory: wonderWhy
+        run: |
+          yarn install
+          yarn b format
+          yarn b lint
+          yarn b build
+          yarn b checkVersion
+
+  Tests:
+    needs: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          ref: ${{ inputs.versionToBuild }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '24.11.1'
+          cache: 'yarn'
+          cache-dependency-path: wonderWhy/yarn.lock
+      - working-directory: wonderWhy
+        run: |
+          yarn install
+          yarn b test
