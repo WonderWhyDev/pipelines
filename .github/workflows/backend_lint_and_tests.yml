@@ -57,6 +57,29 @@ jobs:
   Tests:
     needs: find_latest_version
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - accounts
+          - bankStatements
+          - commonFunctions
+          - driverSalary
+          - eInvoice
+          - gstService
+          - icici
+          - kratos
+          - logger
+          - make
+          - middleware
+          - ocr
+          - subContracts
+          - tenants
+          - tyre
+          - vehicleService
+          - whatsapp
+          - root
+    name: Tests (${{ matrix.module }})
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,6 +94,13 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: wonderWhy/yarn.lock
       - working-directory: wonderWhy
+        run: yarn install
+      - working-directory: wonderWhy
+        env:
+          MODULE: ${{ matrix.module }}
         run: |
-          yarn install
-          yarn b test
+          if [ "$MODULE" = "root" ]; then
+            yarn b test --coverage.include="src/*.ts" src/*.test.ts
+          else
+            yarn b test --coverage.include="src/$MODULE/**" "src/$MODULE"
+          fi
