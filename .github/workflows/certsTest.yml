@@ -38,7 +38,8 @@ jobs:
           --key-type rsa \
           --rsa-key-size 4096 \
           -d test1.wondermove.in \
-          -d auth.test1.wondermove.in
+          -d auth.test1.wondermove.in \
+          -d analytics.test1.wondermove.in
     
     - name: Configure AWS CLI
       uses: aws-actions/configure-aws-credentials@v2

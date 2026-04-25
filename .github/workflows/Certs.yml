@@ -41,6 +41,7 @@ jobs:
           -d www.wondermove.in -d www.wonderwhy.in \
           -d magnum.wondermove.in -d app.wondermove.in \
           -d auth.magnum.wondermove.in -d auth.app.wondermove.in \
+          -d analytics.app.wondermove.in \
           -d vijay.wondermove.in -d avd.wondermove.in
 
     - name: Configure AWS CLI
