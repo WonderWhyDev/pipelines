@@ -1,5 +1,5 @@
-name: "0_iOS Auto App Deploy"
-run-name: iOS Auto App Deploy
+name: "1_iOS_Auto_App_Deploy"
+run-name: iOS_Auto_App_Deploy
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: X-Base Nginx Deploy
+name: X_Deploy_Base_Nginx
 
 on:
   workflow_call:

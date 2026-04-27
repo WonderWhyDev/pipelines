@@ -1,4 +1,4 @@
-name: "0_Build Functional Test Image"
+name: "3_Build_Functional_Test_Image"
 
 on:
   workflow_dispatch:

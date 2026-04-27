@@ -1,4 +1,4 @@
-name: "0_Android MobileApp Deploy"
+name: "1_Deploy_Android_Mobile_App"
 
 on:
   workflow_dispatch:
@@ -15,12 +15,12 @@ on:
         default: 'build'
 
 jobs:
-  qa-build:
-    uses: ./.github/workflows/x_base_mobile_app_build.yml
+  deploy_qa:
+    uses: ./.github/workflows/x_deploy_base_mobile_app_build.yml
     with:
       version_type: ${{ github.event.inputs.version_type }}
       environment: qa
-    secrets: 
+    secrets:
       AUTH_DOMAIN: ${{ secrets.AUTH_DOMAIN }}
       FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -28,12 +28,13 @@ jobs:
       BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
       DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
 
-  prod-build:
-    uses: ./.github/workflows/x_base_mobile_app_build.yml
+  deploy_prod:
+    needs: deploy_qa
+    uses: ./.github/workflows/x_deploy_base_mobile_app_build.yml
     with:
       version_type: ${{ github.event.inputs.version_type }}
       environment: magnum
-    secrets: 
+    secrets:
       AUTH_DOMAIN: ${{ secrets.AUTH_DOMAIN }}
       FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

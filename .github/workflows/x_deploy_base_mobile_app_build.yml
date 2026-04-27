@@ -1,4 +1,4 @@
-name: X-Base Build Mobile App
+name: X_Deploy_Base_Mobile_App_Build
 
 on:
   workflow_call:

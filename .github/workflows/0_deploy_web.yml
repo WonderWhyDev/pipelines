@@ -1,5 +1,5 @@
-name: "0_Web Deploy"
-run-name: Web Deploy
+name: "0_Deploy_Web"
+run-name: Deploy_Web
 on:
   workflow_dispatch:
 
@@ -12,7 +12,7 @@ jobs:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
 
   deploy_qa:
-    uses: ./.github/workflows/x_base_web_deploy.yml
+    uses: ./.github/workflows/x_deploy_base_web.yml
     needs: find_latest_version
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
@@ -32,7 +32,7 @@ jobs:
 
   deploy_prod:
     needs: [find_latest_version, deploy_qa]
-    uses: ./.github/workflows/x_base_web_deploy.yml
+    uses: ./.github/workflows/x_deploy_base_web.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
       environment: magnum

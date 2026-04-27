@@ -1,4 +1,4 @@
-name: X-Base Web Deploy
+name: X_Deploy_Base_Web
 on:
   workflow_call:
     inputs:

@@ -1,5 +1,5 @@
-name: "0_Backend Deploy"
-run-name: Backend Deploy
+name: "0_Deploy_Backend"
+run-name: Deploy_Backend
 on:
   workflow_dispatch:
 

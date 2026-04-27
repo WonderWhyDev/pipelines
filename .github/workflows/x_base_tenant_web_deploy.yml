@@ -1,4 +1,4 @@
-name: X-Base Tenant Web Deploy
+name: X_Base_Tenant_Web_Deploy
 on:
   workflow_call:
     inputs:

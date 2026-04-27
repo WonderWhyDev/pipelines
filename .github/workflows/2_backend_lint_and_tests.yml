@@ -1,5 +1,5 @@
-name: "0_Backend Lint & Tests"
-run-name: Backend Lint & Tests - ${{ inputs.branch || 'main' }}
+name: "2_Backend_Lint_Tests"
+run-name: Backend_Lint_Tests_-_${{ inputs.branch || 'main' }}
 
 on:
   workflow_dispatch:

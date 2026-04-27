@@ -1,5 +1,5 @@
-name: "0_Certs Generation for test env"
-run-name: ssl certs for all
+name: "2_Certs_Generation"
+run-name: SSL_Certs_Generation
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
 jobs:
   generate-certificate:
     runs-on: ubuntu-latest
-    environment: 'qa'
+    environment: 'magnum'
     
     steps:
     - uses: actions/checkout@v2
@@ -35,12 +35,15 @@ jobs:
           --config-dir ./ \
           --work-dir ./ \
           --logs-dir /tmp \
-          --key-type rsa \
           --rsa-key-size 4096 \
-          -d test1.wondermove.in \
-          -d auth.test1.wondermove.in \
-          -d analytics.test1.wondermove.in
-    
+          --key-type rsa \
+          -d wondermove.in -d wonderwhy.in \
+          -d www.wondermove.in -d www.wonderwhy.in \
+          -d magnum.wondermove.in -d app.wondermove.in \
+          -d auth.magnum.wondermove.in -d auth.app.wondermove.in \
+          -d analytics.app.wondermove.in \
+          -d vijay.wondermove.in -d avd.wondermove.in
+
     - name: Configure AWS CLI
       uses: aws-actions/configure-aws-credentials@v2
       with:
@@ -56,7 +59,7 @@ jobs:
     
     - name: Upload Certificates to aws Secrets Manager
       run: |
-        FULLCHAIN=$(cat /home/runner/work/pipelines/pipelines/live/test1.wondermove.in/fullchain.pem | base64 -w 0)
-        PRIVKEY=$(cat /home/runner/work/pipelines/pipelines/live/test1.wondermove.in/privkey.pem | base64 -w 0)
+        FULLCHAIN=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/fullchain.pem | base64 -w 0)
+        PRIVKEY=$(cat /home/runner/work/pipelines/pipelines/live/wondermove.in/privkey.pem | base64 -w 0)
         aws secretsmanager put-secret-value --secret-id CA_CERTS_FULL_CHAIN --secret-string "{\"cert\":\"$FULLCHAIN\"}"
         aws secretsmanager put-secret-value --secret-id CA_CERTS_PRIVATE_KEY --secret-string "{\"key\":\"$PRIVKEY\"}"

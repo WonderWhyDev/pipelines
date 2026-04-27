@@ -1,4 +1,4 @@
-name: X-Base Kratos Deploy
+name: X_Deploy_Base_Superset
 on:
   workflow_call:
     inputs:
@@ -37,21 +37,21 @@ jobs:
       - name: check out repository for actions
         uses: actions/checkout@v4
 
-      - name: Check out only kratos folder
+      - name: Check out only superset folder
         uses: actions/checkout@v4
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
-          sparse-checkout: 'kratos'
+          sparse-checkout: 'superset'
           sparse-checkout-cone-mode: false
           ref: ${{ inputs.versionToBuild }}
 
       - run: |
           cd wonderWhy
           ls -lsh
-          zip -r kratos.zip kratos
+          zip -r superset.zip superset
 
       - uses: ./.github/actions/copy_to_ec2
         with:
@@ -62,10 +62,10 @@ jobs:
            ec2User: ${{ secrets.EC2_USER }}
            securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
            sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-           fileToCopy: ./wonderWhy/kratos.zip
-           destination: ~/kratos.zip
+           fileToCopy: ./wonderWhy/superset.zip
+           destination: ~/superset.zip
            unzipDestination: ~/
            runScript: |
-             cd kratos
+             cd superset
              chmod +x deploy.sh
              sh deploy.sh ${{ secrets.DOMAIN }}
