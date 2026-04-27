@@ -1,0 +1,46 @@
+name: Kratos Deploy
+run-name: Kratos Deploy
+on:
+  workflow_dispatch:
+
+jobs:
+  find_latest_version:
+    uses: ./.github/workflows/x_base_get_latest_repo_version.yml
+    with:
+      environment: qa
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+
+  deploy_qa:
+    uses: ./.github/workflows/x_base_kratos_deploy.yml
+    needs: find_latest_version
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: qa
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      EC2_IP: ${{ secrets.EC2_IP }}
+      AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
+      SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+      DOMAIN: "${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}"
+
+  deploy_prod:
+    needs: [find_latest_version, deploy_qa]
+    uses: ./.github/workflows/x_base_kratos_deploy.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: magnum
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      EC2_IP: ${{ secrets.EC2_IP }}
+      AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
+      SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+      DOMAIN: "${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}"

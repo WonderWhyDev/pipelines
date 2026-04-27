@@ -16,7 +16,7 @@ on:
 
 jobs:
   qa-build:
-    uses: ./.github/workflows/base_mobile_app_build.yml
+    uses: ./.github/workflows/x_base_mobile_app_build.yml
     with:
       version_type: ${{ github.event.inputs.version_type }}
       environment: qa
@@ -29,7 +29,7 @@ jobs:
       DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
 
   prod-build:
-    uses: ./.github/workflows/base_mobile_app_build.yml
+    uses: ./.github/workflows/x_base_mobile_app_build.yml
     with:
       version_type: ${{ github.event.inputs.version_type }}
       environment: magnum

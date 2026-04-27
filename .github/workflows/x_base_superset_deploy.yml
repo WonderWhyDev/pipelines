@@ -1,4 +1,4 @@
-name: Base Zitadel Deploy
+name: Base Superset Deploy
 on:
   workflow_call:
     inputs:
@@ -25,15 +25,11 @@ on:
             required: true
         SSH_PRIVATE_KEY_FOR_EC2:
             required: true
-        CA_CERTS_FULL_CHAIN:
-            required: true
-        CA_CERTS_PRIVATE_KEY:
-            required: true
-        AUTH_DOMAIN:
+        DOMAIN:
             required: true
 
 jobs:
-  deploy_zitadel:
+  deploy:
     runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.environment }}
@@ -41,24 +37,21 @@ jobs:
       - name: check out repository for actions
         uses: actions/checkout@v4
 
-      - name: Check out only zitadel folder
+      - name: Check out only superset folder
         uses: actions/checkout@v4
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
-          sparse-checkout: 'zitadel'
+          sparse-checkout: 'superset'
           sparse-checkout-cone-mode: false
-          ref :  ${{ inputs.versionToBuild }}
+          ref: ${{ inputs.versionToBuild }}
 
       - run: |
           cd wonderWhy
           ls -lsh
-          mkdir -p zitadel/certs
-          echo "${{ secrets.CA_CERTS_FULL_CHAIN }}" > zitadel/certs/fullchain.pem  
-          echo "${{ secrets.CA_CERTS_PRIVATE_KEY }}" > zitadel/certs/privkey.pem 
-          zip -r zitadel.zip zitadel
+          zip -r superset.zip superset
 
       - uses: ./.github/actions/copy_to_ec2
         with:
@@ -69,12 +62,10 @@ jobs:
            ec2User: ${{ secrets.EC2_USER }}
            securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
            sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
-           fileToCopy: ./wonderWhy/zitadel.zip
-           destination: ~/zitadel.zip
+           fileToCopy: ./wonderWhy/superset.zip
+           destination: ~/superset.zip
            unzipDestination: ~/
            runScript: |
-             cd zitadel
-             sh deploy.sh ${{ secrets.AUTH_DOMAIN }}
-
-
-
+             cd superset
+             chmod +x deploy.sh
+             sh deploy.sh ${{ secrets.DOMAIN }}

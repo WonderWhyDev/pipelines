@@ -1,4 +1,4 @@
-name: Get Github Repo Latest Version
+name: Base Get Latest Repo Version
 on:
   workflow_call:
     inputs:

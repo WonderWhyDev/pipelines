@@ -1,4 +1,4 @@
-name: Base Flutter Web Deploy
+name: Base Web Deploy
 on:
   workflow_call:
     inputs:
@@ -33,10 +33,10 @@ on:
         required: true
     outputs:
       latest_version:
-        value: ${{ jobs.build_and_deploy.outputs.latest_version }}
+        value: ${{ jobs.deploy.outputs.latest_version }}
 
 jobs:
-  build_and_deploy:
+  deploy:
     runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.environment }}
