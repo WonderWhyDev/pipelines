@@ -1,4 +1,4 @@
-name: Superset Deploy
+name: "0_Superset Deploy"
 run-name: Superset Deploy
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Certs Generation for test env
+name: "0_Certs Generation for test env"
 run-name: ssl certs for all
 
 on:

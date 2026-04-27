@@ -1,4 +1,4 @@
-name: Base Get Latest Repo Version
+name: X-Base Get Latest Repo Version
 on:
   workflow_call:
     inputs:

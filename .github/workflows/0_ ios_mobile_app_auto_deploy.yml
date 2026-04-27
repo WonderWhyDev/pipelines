@@ -1,4 +1,4 @@
-name: iOS Auto App Deploy
+name: "0_iOS Auto App Deploy"
 run-name: iOS Auto App Deploy
 
 on:

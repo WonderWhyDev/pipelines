@@ -1,4 +1,4 @@
-name: Kratos Deploy
+name: "0_Kratos Deploy"
 run-name: Kratos Deploy
 on:
   workflow_dispatch:

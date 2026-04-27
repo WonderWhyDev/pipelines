@@ -1,5 +1,5 @@
-name: Backend Lint & Tests
-run-name: Backend Lint & Tests - ${{ inputs.branch }}
+name: "0_Backend Lint & Tests"
+run-name: Backend Lint & Tests - ${{ inputs.branch || 'main' }}
 
 on:
   workflow_dispatch:
@@ -9,6 +9,8 @@ on:
         required: true
         type: string
         default: main
+  schedule:
+    - cron: "30 2,5,9,11,13 * * *"
 
 jobs:
   find_latest_version:
@@ -20,7 +22,7 @@ jobs:
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_READ_TOKEN }}
-          ref: ${{ inputs.branch }}
+          ref: ${{ inputs.branch || 'main' }}
           fetch-depth: 1
           sparse-checkout: '.gitignore'
           sparse-checkout-cone-mode: false
@@ -28,7 +30,7 @@ jobs:
         run: |
           latest_version=$(git log -1 --format=%H)
           echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
-          echo "Resolved ${{ inputs.branch }} to $latest_version"
+          echo "Resolved ${{ inputs.branch || github.event_name == 'schedule' && 'main' || inputs.branch }} to $latest_version"
 
   Lint:
     needs: find_latest_version

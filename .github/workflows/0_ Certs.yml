@@ -1,4 +1,4 @@
-name: Certs Generation for all sites
+name: "0_Certs Generation for all sites"
 run-name: ssl certs for all
 
 on:

@@ -1,4 +1,4 @@
-name: Base Kratos Deploy
+name: X-Base Kratos Deploy
 on:
   workflow_call:
     inputs:

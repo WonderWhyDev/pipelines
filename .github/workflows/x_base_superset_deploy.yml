@@ -1,4 +1,4 @@
-name: Base Superset Deploy
+name: X-Base Superset Deploy
 on:
   workflow_call:
     inputs:
