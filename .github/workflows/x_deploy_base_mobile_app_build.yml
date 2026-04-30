@@ -111,16 +111,19 @@ jobs:
           echo "New version: $NEW_VERSION"
 
       - name: Build APK in --release mode
-        env:
-          DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
-          BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
         run: |
-          cd wonderWhy/flutterFlow/wonder_move_mobile
+          case "${{ inputs.environment }}" in
+            magnum) DART_ENV=production ;;
+            qa)     DART_ENV=test ;;
+            *)      DART_ENV=test ;;
+          esac
+          echo "Building with ENV=$DART_ENV"
+
+          cd wonderWhy/flutter/apps/wondermove_mobile
           sed -i "s/^version: .*/version: ${{ steps.increment_version.outputs.new_version }}/" "pubspec.yaml"
-          sed -i "s|String _appBackendDomain = .*|String _appBackendDomain = 'https://$DOMAIN_NAME.$BASE_DOMAIN';|" lib/app_state.dart
           flutter clean
           flutter pub get
-          flutter build apk --release
+          flutter build apk --release --dart-define=ENV=$DART_ENV
 
       - name: Create Release
         id: create_release
@@ -134,7 +137,7 @@ jobs:
             Built from commit: ${{ github.sha }}
             Built by: ${{ github.actor }}
           files: |
-            wonderWhy/flutterFlow/wonder_move_mobile/build/app/outputs/flutter-apk/app-release.apk
+            wonderWhy/flutter/apps/wondermove_mobile/build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -144,5 +147,5 @@ jobs:
           appId: ${{ secrets.FIREBASE_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           releaseNotes: Release v${{ steps.increment_version.outputs.new_version }} [${{ inputs.environment }}]
-          file: wonderWhy/flutterFlow/wonder_move_mobile/build/app/outputs/flutter-apk/app-release.apk
+          file: wonderWhy/flutter/apps/wondermove_mobile/build/app/outputs/flutter-apk/app-release.apk
           groups: devGroup
