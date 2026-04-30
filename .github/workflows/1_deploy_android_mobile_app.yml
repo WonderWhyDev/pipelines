@@ -28,16 +28,16 @@ jobs:
       BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
       DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
 
-  deploy_prod:
-    needs: deploy_qa
-    uses: ./.github/workflows/x_deploy_base_mobile_app_build.yml
-    with:
-      version_type: ${{ github.event.inputs.version_type }}
-      environment: magnum
-    secrets:
-      AUTH_DOMAIN: ${{ secrets.AUTH_DOMAIN }}
-      FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
-      BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
-      DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
+  # deploy_prod:
+  #   needs: deploy_qa
+  #   uses: ./.github/workflows/x_deploy_base_mobile_app_build.yml
+  #   with:
+  #     version_type: ${{ github.event.inputs.version_type }}
+  #     environment: magnum
+  #   secrets:
+  #     AUTH_DOMAIN: ${{ secrets.AUTH_DOMAIN }}
+  #     FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+  #     FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+  #     REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+  #     BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
+  #     DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
