@@ -1,5 +1,5 @@
-name: "1_Android_Auto_App_Deploy"
-run-name: Android_Auto_App_Deploy
+name: "1_Android_WonderMove_Mobile_Auto_Deploy"
+run-name: Android_WonderMove_Mobile_Auto_Deploy
 on:
   workflow_dispatch:
     inputs:
@@ -12,6 +12,15 @@ on:
           - production
           - promote_beta_to_production
         default: 'beta'
+      app_env:
+        description: 'App ENV baked into the build (--dart-define=ENV=...). Temporary: pick "test" to ship a beta pointing to test backend.'
+        required: true
+        type: choice
+        options:
+          - test
+          - production
+          - local
+        default: 'test'
 
 jobs:
   deploy:
@@ -19,6 +28,10 @@ jobs:
 
     environment:
       name: magnum
+
+    env:
+      APP_DIR: wonderWhy/flutter/apps/wondermove_mobile
+      FLUTTER_ROOT_DIR: wonderWhy/flutter
 
     steps:
       - name: Check out wonderwhy folder
@@ -46,32 +59,38 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-v2-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-
+            ${{ runner.os }}-gradle-v2-
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
-          
+
+      - name: Bootstrap melos workspace
+        run: |
+          cd $FLUTTER_ROOT_DIR
+          dart pub get
+          dart run melos bootstrap
+
       - name: Inject Fastlane
         run: |
           cd wonderWhy
-          mkdir -p flutterFlow/wonder_move_mobile/android/fastlane
-          cp -r automation/androidFastlane/* flutterFlow/wonder_move_mobile/android/fastlane/
-          cp -r automation/Gemfile flutterFlow/wonder_move_mobile/android/
+          mkdir -p flutter/apps/wondermove_mobile/android/fastlane
+          cp -r automation/androidFastlane/* flutter/apps/wondermove_mobile/android/fastlane/
+          cp -r automation/Gemfile flutter/apps/wondermove_mobile/android/
 
       - name: Decode Keystore
         run: |
           cd wonderWhy
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode \
-            > flutterFlow/wonder_move_mobile/android/app/keystore.jks
+            > flutter/apps/wondermove_mobile/android/app/keystore.jks
 
       - name: Create key.properties
         run: |
           cd wonderWhy
-          cat <<EOF > flutterFlow/wonder_move_mobile/android/key.properties
+          cat <<EOF > flutter/apps/wondermove_mobile/android/key.properties
             storeFile=keystore.jks
             storePassword=${{ secrets.KEYSTORE_PASSWORD }}
             keyAlias=${{ secrets.KEY_ALIAS }}
@@ -80,32 +99,27 @@ jobs:
 
       - name: Install Fastlane
         run: |
-          cd wonderWhy/flutterFlow/wonder_move_mobile/android
+          cd $APP_DIR/android
           gem install bundler -v "~> 2.7"
           bundle install
 
-      - name: Configure Gradle Repositories
+      - name: Configure Gradle
         run: |
-          cd wonderWhy/flutterFlow/wonder_move_mobile/android
-
+          cd $APP_DIR/android
           cat >> gradle.properties << 'EOF'
 
           org.gradle.jvmargs=-Xmx4096m
           android.useAndroidX=true
           android.enableJetifier=true
-          android.jetifier.ignorelist=arm64_v8a_release,x86_64_release,armeabi_v7a_release,x86_release
           EOF
-
-          if grep -q "FAIL_ON_PROJECT_REPOS" settings.gradle; then
-            sed -i 's/FAIL_ON_PROJECT_REPOS/PREFER_PROJECT/g' settings.gradle
-          fi
 
       - name: Build & Upload to Google Play
         env:
           GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
+          APP_ENV: ${{ github.event.inputs.app_env }}
         run: |
-          cd wonderWhy/flutterFlow/wonder_move_mobile/android
-          sed -i 's/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/g' app/build.gradle
+          cd $APP_DIR/android
+          echo "Building app with APP_ENV=$APP_ENV on track=${{ github.event.inputs.release_track }}"
           bundle exec fastlane --version
           case "${{ github.event.inputs.release_track }}" in
             beta)
