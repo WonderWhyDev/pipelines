@@ -39,20 +39,11 @@ jobs:
       - name: Pull functional-test image
         run: docker pull ghcr.io/wonderwhydev/functional-test:latest
 
-      - name: Bring up infra
+      - name: Bring up localstack and create SQS queue
         working-directory: wonderWhy
         run: |
-          docker compose -p ci up -d db localstack
-          for i in $(seq 1 30); do
-            status=$(docker inspect --format '{{.State.Health.Status}}' ci-localstack-1 2>/dev/null || echo none)
-            [ "$status" = "healthy" ] && break
-            echo "Try $i: localstack $status"
-            sleep 5
-          done
-
-      - name: Create SQS queue
-        working-directory: wonderWhy
-        run: docker compose -p ci exec -T localstack awslocal sqs create-queue --queue-name margin
+          docker compose -p ci up -d --wait localstack
+          docker compose -p ci exec -T localstack awslocal sqs create-queue --queue-name margin
 
       - name: Bring up backend, kratos, functional-test
         working-directory: wonderWhy
