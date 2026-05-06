@@ -1,0 +1,78 @@
+name: "2_Functional_Test_API"
+run-name: Functional_Test_API_-_${{ inputs.branch || 'main' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'wonderWhy branch to test'
+        required: true
+        type: string
+        default: main
+  schedule:
+    - cron: "0 4 * * *"
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout wonderWhy
+        uses: actions/checkout@v4
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          ref: ${{ inputs.branch || 'main' }}
+          fetch-depth: 1
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHRC_SECRET_KEY }}
+
+      - name: Pull functional-test image
+        run: docker pull ghcr.io/wonderwhydev/functional-test:latest
+
+      - name: Bring up stack
+        working-directory: wonderWhy
+        run: |
+          docker compose -p ci up -d db localstack
+          docker compose -p ci up -d backend kratos
+          docker compose -p ci up -d functional-test
+
+      - name: Wait for backend
+        working-directory: wonderWhy
+        run: |
+          for i in $(seq 1 60); do
+            code=$(docker compose -p ci exec -T functional-test \
+              curl -s -o /dev/null -w "%{http_code}" http://backend:3000/api/transporter || echo 000)
+            case "$code" in
+              200|401) echo "Backend ready (HTTP $code)"; exit 0 ;;
+            esac
+            echo "Try $i: HTTP $code"
+            sleep 10
+          done
+          echo "Backend did not become ready" >&2
+          exit 1
+
+      - name: Run API tests
+        working-directory: wonderWhy
+        run: |
+          docker compose -p ci exec -T functional-test sh -c \
+            "cd /app/functional-test && dart pub get && dart test test/api/"
+
+      - name: Dump backend logs on failure
+        if: failure()
+        working-directory: wonderWhy
+        run: docker compose -p ci logs backend kratos db localstack
+
+      - name: Tear down
+        if: always()
+        working-directory: wonderWhy
+        run: docker compose -p ci down -v

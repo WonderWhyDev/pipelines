@@ -1,5 +1,5 @@
-name: "1_Android_WonderMove_Mobile_Auto_Deploy"
-run-name: Android_WonderMove_Mobile_Auto_Deploy
+name: "1_Android_Pure_Flutter_Deploy"
+run-name: Android_Pure_Flutter_Deploy
 on:
   workflow_dispatch:
     inputs:
