@@ -64,6 +64,7 @@ jobs:
         with:
           channel: stable
           flutter-version: 3.38.9
+          cache: true
 
       - uses: actions/setup-node@v3
         with:
@@ -88,6 +89,13 @@ jobs:
         run: |
           cd wonderWhy
           mv vijayBulkTransport webDeploy/vijayBulkTransport
+
+      - name: Cache Flutter pub
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('wonderWhy/flutter/**/pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
 
       - name: Install Flutter dependencies
         run: |
@@ -147,9 +155,9 @@ jobs:
 
       - name: Brotli compress
         run: |
+          sudo apt-get -y install brotli
           cd wonderWhy/webDeploy
-          sudo apt-get  -y install brotli
-          find ./ -type f -exec brotli -Zkv {} \;
+          find ./ -type f | xargs -P $(nproc) -I{} brotli -Zk {}
 
       - run: |
           cd wonderWhy
