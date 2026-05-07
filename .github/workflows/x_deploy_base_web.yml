@@ -66,7 +66,7 @@ jobs:
           flutter-version: 3.38.9
           cache: true
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "yarn"
@@ -117,7 +117,7 @@ jobs:
       - name: Build flutter web
         run: |
           cd wonderWhy/flutter/apps/wondermove_web
-          flutter build web --release --source-maps
+          flutter build web --release
           rm -rf build/web/canvaskit
           HASH=$(md5sum build/web/main.dart.js | cut -c1-8)
           mv build/web/main.dart.js build/web/main.dart.${HASH}.js
@@ -127,7 +127,7 @@ jobs:
       - name: Build wondermake flutter web
         run: |
           cd wonderWhy/flutter/apps/wondermake_web
-          flutter build web --release --source-maps
+          flutter build web --release
           rm -rf build/web/canvaskit
           HASH=$(md5sum build/web/main.dart.js | cut -c1-8)
           mv build/web/main.dart.js build/web/main.dart.${HASH}.js
@@ -145,7 +145,7 @@ jobs:
           cd wonderWhy/flutterFlow/wonder_move_web
           flutter clean
           flutter pub get
-          flutter build web --release --source-maps
+          flutter build web --release
           rm -rf build/web/canvaskit
           HASH=$(md5sum build/web/main.dart.js | cut -c1-8)
           mv build/web/main.dart.js build/web/main.dart.${HASH}.js
@@ -157,7 +157,9 @@ jobs:
         run: |
           sudo apt-get -y install brotli
           cd wonderWhy/webDeploy
-          find ./ -type f | xargs -P $(nproc) -I{} brotli -Zk {}
+          find ./ -type f \
+            ! -iregex '.*\.\(png\|jpg\|jpeg\|webp\|gif\|woff\|woff2\|ico\|br\)$' \
+            | xargs -P $(nproc) -I{} brotli -q 9 -k {}
 
       - run: |
           cd wonderWhy

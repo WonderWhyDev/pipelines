@@ -43,7 +43,7 @@ jobs:
           path: wonderWhy
           fetch-depth: 1
           ref: ${{ needs.find_latest_version.outputs.latest_version }}
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: '24.11.1'
           cache: 'yarn'
@@ -91,7 +91,7 @@ jobs:
           path: wonderWhy
           fetch-depth: 1
           ref: ${{ needs.find_latest_version.outputs.latest_version }}
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: '24.11.1'
           cache: 'yarn'
