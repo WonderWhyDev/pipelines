@@ -1,0 +1,74 @@
+name: "0_Revert_Backend"
+run-name: Revert_Backend_${{ inputs.target_env }}
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'environment to revert (qa or prod)'
+        type: choice
+        options: [qa, prod]
+        required: true
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.target_env == 'prod' && 'magnum' || 'qa' }}
+    steps:
+      - name: Get Runner IP
+        run: |
+          IP_ADDRESS=$(curl -s https://api.ipify.org)
+          echo "IP_ADDRESS=$IP_ADDRESS" >> $GITHUB_ENV
+
+      - name: Configure AWS CLI
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update Security Group
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.SECURITY_GROUP_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${IP_ADDRESS}/32
+
+      - name: Setup SSH key
+        env:
+          SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+        run: |
+          echo "$SSH_PRIVATE_KEY_FOR_EC2" > SSH_PRIVATE_KEY_FOR_EC2.pem
+          chmod 600 SSH_PRIVATE_KEY_FOR_EC2.pem
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H ${{ secrets.EC2_IP }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Flip to inactive color
+        run: |
+          ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} << 'EOF'
+          set -e
+          ACTIVE=$(cat ~/.active_backend_color)
+          case "$ACTIVE" in
+            blue)  INACTIVE=green ;;
+            green) INACTIVE=blue ;;
+            *) echo "invalid active color: $ACTIVE"; exit 1 ;;
+          esac
+          if ! docker ps --format '{{.Names}}' | grep -q "^backend_${INACTIVE}$"; then
+            echo "Error: backend_${INACTIVE} container is not running; nothing to revert to"
+            exit 1
+          fi
+          sh ~/wonderwhy_backend/flip.sh $INACTIVE
+          EOF
+
+      - name: Remove Added Security Group Rule
+        if: always()
+        continue-on-error: true
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id ${{ secrets.SECURITY_GROUP_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${IP_ADDRESS}/32

@@ -77,10 +77,30 @@ jobs:
           sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
           fileToCopy: ./backend.zip
           destination: ~/backend.zip
-          unzipDestination: ~/
           runScript: |
-            cd backend
-            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} \
+            set -e
+            ACTIVE=$(cat ~/.active_backend_color 2>/dev/null || echo blue)
+            case "$ACTIVE" in
+              blue)  INACTIVE=green ;;
+              green) INACTIVE=blue ;;
+              *) echo "invalid active color: $ACTIVE"; exit 1 ;;
+            esac
+            echo "active=$ACTIVE; deploying to $INACTIVE"
+            mkdir -p ~/wonderwhy_backend
+            rm -rf /tmp/backend_unzip
+            mkdir -p /tmp/backend_unzip
+            unzip -o ~/backend.zip -d /tmp/backend_unzip
+            sudo rm -rf ~/wonderwhy_backend/$INACTIVE
+            mkdir -p ~/wonderwhy_backend/$INACTIVE
+            cp -rf /tmp/backend_unzip/backend/. ~/wonderwhy_backend/$INACTIVE/
+            rm -rf /tmp/backend_unzip
+            cp ~/wonderwhy_backend/$INACTIVE/compose.yml ~/wonderwhy_backend/compose.yml
+            cp ~/wonderwhy_backend/$INACTIVE/flip.sh    ~/wonderwhy_backend/flip.sh
+            cp ~/wonderwhy_backend/$INACTIVE/deploy.sh  ~/wonderwhy_backend/deploy.sh
+            chmod +x ~/wonderwhy_backend/flip.sh ~/wonderwhy_backend/deploy.sh
+            sudo chown -R ec2-user:ec2-user ~/wonderwhy_backend
+            cd ~/wonderwhy_backend
+            sh ./deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} \
               ${{ secrets.ZITADEL_PAT }} \
               "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" \
               ${{ secrets.GEN_AI_GOOGLE_API }} \
@@ -159,10 +179,30 @@ jobs:
           sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
           fileToCopy: ./backend.zip
           destination: ~/backend.zip
-          unzipDestination: ~/
           runScript: |
-            cd backend
-            sh deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} \
+            set -e
+            ACTIVE=$(cat ~/.active_backend_color 2>/dev/null || echo blue)
+            case "$ACTIVE" in
+              blue)  INACTIVE=green ;;
+              green) INACTIVE=blue ;;
+              *) echo "invalid active color: $ACTIVE"; exit 1 ;;
+            esac
+            echo "active=$ACTIVE; deploying to $INACTIVE"
+            mkdir -p ~/wonderwhy_backend
+            rm -rf /tmp/backend_unzip
+            mkdir -p /tmp/backend_unzip
+            unzip -o ~/backend.zip -d /tmp/backend_unzip
+            sudo rm -rf ~/wonderwhy_backend/$INACTIVE
+            mkdir -p ~/wonderwhy_backend/$INACTIVE
+            cp -rf /tmp/backend_unzip/backend/. ~/wonderwhy_backend/$INACTIVE/
+            rm -rf /tmp/backend_unzip
+            cp ~/wonderwhy_backend/$INACTIVE/compose.yml ~/wonderwhy_backend/compose.yml
+            cp ~/wonderwhy_backend/$INACTIVE/flip.sh    ~/wonderwhy_backend/flip.sh
+            cp ~/wonderwhy_backend/$INACTIVE/deploy.sh  ~/wonderwhy_backend/deploy.sh
+            chmod +x ~/wonderwhy_backend/flip.sh ~/wonderwhy_backend/deploy.sh
+            sudo chown -R ec2-user:ec2-user ~/wonderwhy_backend
+            cd ~/wonderwhy_backend
+            sh ./deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} \
               ${{ secrets.ZITADEL_PAT }} \
               "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" \
               ${{ secrets.GEN_AI_GOOGLE_API }} \
