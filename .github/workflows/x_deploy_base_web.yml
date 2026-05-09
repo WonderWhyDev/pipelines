@@ -48,10 +48,10 @@ jobs:
         run: echo "latest_version=${{ inputs.versionToBuild }}" >> $GITHUB_OUTPUT
 
       - name: check out repository for actions
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check out application code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_TOKEN }}
@@ -66,7 +66,7 @@ jobs:
           flutter-version: 3.38.9
           cache: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: "yarn"
@@ -91,7 +91,7 @@ jobs:
           mv vijayBulkTransport webDeploy/vijayBulkTransport
 
       - name: Cache Flutter pub
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('wonderWhy/flutter/**/pubspec.yaml') }}

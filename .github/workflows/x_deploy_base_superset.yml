@@ -35,10 +35,10 @@ jobs:
       name: ${{ inputs.environment }}
     steps:
       - name: check out repository for actions
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check out only superset folder
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_TOKEN }}

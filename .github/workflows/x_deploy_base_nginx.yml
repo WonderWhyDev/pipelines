@@ -38,11 +38,11 @@ jobs:
     steps:
       # Checkout current repo (for actions)
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Checkout only nginx folder from main repo
       - name: Checkout nginx config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_TOKEN }}

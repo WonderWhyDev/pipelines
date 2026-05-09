@@ -22,7 +22,7 @@ jobs:
         latest_version: ${{ steps.get_version.outputs.latest_version }}
     steps:
       - name: Check out only flutterFlow web folder
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_TOKEN }}

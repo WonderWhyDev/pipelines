@@ -52,10 +52,10 @@ jobs:
         run: echo "latest_version=${{ inputs.versionToBuild }}" >> $GITHUB_OUTPUT
 
       - name: check out repository for actions
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check out application code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_TOKEN }}
@@ -69,7 +69,7 @@ jobs:
           channel: stable
           flutter-version: 3.29.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'yarn'

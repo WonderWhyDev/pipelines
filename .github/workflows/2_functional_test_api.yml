@@ -21,7 +21,7 @@ jobs:
       packages: read
     steps:
       - name: Checkout wonderWhy
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_READ_TOKEN }}

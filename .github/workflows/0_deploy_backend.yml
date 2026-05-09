@@ -20,10 +20,10 @@ jobs:
       name: qa
     steps:
       - name: check out repository for actions
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check out wonderwhy folder
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_READ_TOKEN }}
@@ -31,7 +31,7 @@ jobs:
           fetch-depth: 1
           ref:  ${{ needs.find_latest_version.outputs.latest_version }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.11.1'
           cache: 'yarn'
@@ -123,10 +123,10 @@ jobs:
     environment: magnum
     steps:
       - name: check out repository for actions
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check out wonderwhy folder
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_READ_TOKEN }}
@@ -134,7 +134,7 @@ jobs:
           fetch-depth: 1
           ref:  ${{ needs.deploy_qa.outputs.latest_version }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.11.1'
           cache: 'yarn'

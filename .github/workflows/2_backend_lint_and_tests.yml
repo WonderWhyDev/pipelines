@@ -18,7 +18,7 @@ jobs:
     outputs:
       latest_version: ${{ steps.get_version.outputs.latest_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_READ_TOKEN }}
@@ -36,14 +36,14 @@ jobs:
     needs: find_latest_version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_READ_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
           ref: ${{ needs.find_latest_version.outputs.latest_version }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.11.1'
           cache: 'yarn'
@@ -84,14 +84,14 @@ jobs:
           - root
     name: Tests (${{ matrix.module }})
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_READ_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
           ref: ${{ needs.find_latest_version.outputs.latest_version }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.11.1'
           cache: 'yarn'
