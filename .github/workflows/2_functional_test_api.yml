@@ -70,7 +70,7 @@ jobs:
         working-directory: wonderWhy
         run: |
           docker compose -p ci exec -T functional-test sh -c \
-            "cd /app/functional-test && dart pub get && dart test test/api/"
+            "cd /app/functional-test && dart pub get && dart test --concurrency=1 test/api/"
 
       - name: Diagnostics on failure
         if: failure()
