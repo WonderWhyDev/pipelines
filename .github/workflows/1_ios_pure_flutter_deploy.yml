@@ -1,0 +1,95 @@
+name: "1_iOS_Pure_Flutter_Deploy"
+run-name: iOS_Pure_Flutter_Deploy
+on:
+  workflow_dispatch:
+    inputs:
+      release_track:
+        description: 'Release track'
+        required: true
+        type: choice
+        options:
+          - beta
+          - promote_beta_to_production
+        default: 'beta'
+
+jobs:
+  deploy:
+    runs-on: macos-latest
+
+    environment:
+      name: magnum
+
+    env:
+      APP_DIR: wonderWhy/flutter/apps/wondermove_mobile
+      FLUTTER_ROOT_DIR: wonderWhy/flutter
+
+    steps:
+      - name: Check out wonderwhy folder
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods -v "~> 1.15"
+          pod --version
+
+      - name: Bootstrap melos workspace
+        run: |
+          cd $FLUTTER_ROOT_DIR
+          dart pub get
+          dart run melos bootstrap
+
+      - name: Inject Fastlane
+        run: |
+          cd wonderWhy
+          mkdir -p flutter/apps/wondermove_mobile/ios/fastlane
+          cp -r automation/iosFastlane/* flutter/apps/wondermove_mobile/ios/fastlane/
+          cp -r automation/Gemfile flutter/apps/wondermove_mobile/ios/
+
+      - name: Install iOS dependencies
+        run: |
+          cd $APP_DIR
+          flutter pub get
+          cd ios
+          gem install bundler -v "~> 2.7"
+          bundle install
+          pod install
+
+      - name: Build & Upload
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+        run: |
+          cd $APP_DIR/ios
+          echo "Running iOS lane: ${{ github.event.inputs.release_track }}"
+          bundle exec fastlane --version
+          case "${{ github.event.inputs.release_track }}" in
+            beta)
+              bundle exec fastlane beta
+              ;;
+            promote_beta_to_production)
+              bundle exec fastlane promote_beta_to_production
+              ;;
+            *)
+              echo "Unknown release_track: ${{ github.event.inputs.release_track }}"
+              exit 1
+              ;;
+          esac
