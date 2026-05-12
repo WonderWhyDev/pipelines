@@ -60,6 +60,11 @@ jobs:
           cp -r automation/iosFastlane/* flutter/apps/wondermove_mobile/ios/fastlane/
           cp -r automation/Gemfile flutter/apps/wondermove_mobile/ios/
 
+      - name: Precache Flutter iOS engine
+        run: |
+          cd $APP_DIR
+          flutter precache --ios --no-android --no-web --no-linux --no-windows --no-macos --no-fuchsia
+
       - name: Install iOS dependencies
         run: |
           cd $APP_DIR
@@ -70,13 +75,20 @@ jobs:
           pod install
 
       - name: Build & Upload
+        timeout-minutes: 45
         env:
+          CI: "true"
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          FASTLANE_VERBOSE: "1"
+          FASTLANE_SKIP_UPDATE_CHECK: "1"
+          FASTLANE_HIDE_CHANGELOG: "1"
+          VERBOSE_SCRIPT_LOGGING: "true"
+          GYM_VERBOSE: "true"
         run: |
           cd $APP_DIR/ios
           echo "Running iOS lane: ${{ github.event.inputs.release_track }}"
