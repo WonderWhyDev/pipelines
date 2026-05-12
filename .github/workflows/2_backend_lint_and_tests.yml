@@ -103,7 +103,7 @@ jobs:
           MODULE: ${{ matrix.module }}
         run: |
           if [ "$MODULE" = "root" ]; then
-            yarn b test --coverage.include="src/*.ts" src/*.test.ts
+            yarn b test --coverage.include="src/*.ts" --project=root
           else
             yarn b test --coverage.include="src/$MODULE/**" "src/$MODULE"
           fi

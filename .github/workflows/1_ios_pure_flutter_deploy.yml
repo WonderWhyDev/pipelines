@@ -32,6 +32,11 @@ jobs:
           path: wonderWhy
           fetch-depth: 1
 
+      - name: Select Xcode (iOS 26 SDK required by App Store)
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
