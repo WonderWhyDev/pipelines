@@ -62,27 +62,57 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module:
-          - accounts
-          - bankStatements
-          - commonFunctions
-          - dataProvider
-          - driverSalary
-          - eInvoice
-          - gstService
-          - icici
-          - kratos
-          - logger
-          - make
-          - middleware
-          - ocr
-          - subContracts
-          - tenants
-          - tyre
-          - vehicleService
-          - whatsapp
-          - root
-    name: Tests (${{ matrix.module }})
+        include:
+          # subContracts (split 4 ways by subfolder for runtime, coverage scoped per folder)
+          - name: subContracts-controller
+            cmd: 'yarn b test --coverage.include="src/subContracts/controller/**" src/subContracts/controller'
+          - name: subContracts-models
+            cmd: 'yarn b test --coverage.include="src/subContracts/models/**" src/subContracts/models'
+          - name: subContracts-domain
+            cmd: 'yarn b test --coverage.include="src/subContracts/domain/**" src/subContracts/domain'
+          - name: subContracts-rest
+            cmd: 'yarn b test --coverage.include="src/subContracts/axiosServices/**" --coverage.include="src/subContracts/sqsListners/**" src/subContracts/axiosServices src/subContracts/sqsListners'
+          # accounts (split 2 ways)
+          - name: accounts-controller
+            cmd: 'yarn b test --coverage.include="src/accounts/controller/**" src/accounts/controller'
+          - name: accounts-rest
+            cmd: 'yarn b test --coverage.include="src/accounts/models/**" --coverage.include="src/accounts/domain/**" --coverage.include="src/accounts/axiosServices/**" --coverage.include="src/accounts/axiosService/**" src/accounts/models src/accounts/domain src/accounts/axiosServices src/accounts/axiosService'
+          # other modules (unchanged)
+          - name: bankStatements
+            cmd: 'yarn b test --coverage.include="src/bankStatements/**" src/bankStatements'
+          - name: commonFunctions
+            cmd: 'yarn b test --coverage.include="src/commonFunctions/**" src/commonFunctions'
+          - name: dataProvider
+            cmd: 'yarn b test --coverage.include="src/dataProvider/**" src/dataProvider'
+          - name: driverSalary
+            cmd: 'yarn b test --coverage.include="src/driverSalary/**" src/driverSalary'
+          - name: eInvoice
+            cmd: 'yarn b test --coverage.include="src/eInvoice/**" src/eInvoice'
+          - name: gstService
+            cmd: 'yarn b test --coverage.include="src/gstService/**" src/gstService'
+          - name: icici
+            cmd: 'yarn b test --coverage.include="src/icici/**" src/icici'
+          - name: kratos
+            cmd: 'yarn b test --coverage.include="src/kratos/**" src/kratos'
+          - name: logger
+            cmd: 'yarn b test --coverage.include="src/logger/**" src/logger'
+          - name: make
+            cmd: 'yarn b test --coverage.include="src/make/**" src/make'
+          - name: middleware
+            cmd: 'yarn b test --coverage.include="src/middleware/**" src/middleware'
+          - name: ocr
+            cmd: 'yarn b test --coverage.include="src/ocr/**" src/ocr'
+          - name: tenants
+            cmd: 'yarn b test --coverage.include="src/tenants/**" src/tenants'
+          - name: tyre
+            cmd: 'yarn b test --coverage.include="src/tyre/**" src/tyre'
+          - name: vehicleService
+            cmd: 'yarn b test --coverage.include="src/vehicleService/**" src/vehicleService'
+          - name: whatsapp
+            cmd: 'yarn b test --coverage.include="src/whatsapp/**" src/whatsapp'
+          - name: root
+            cmd: 'yarn b test --coverage.include="src/*.ts" --project=root'
+    name: Tests (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v5
         with:
@@ -99,11 +129,4 @@ jobs:
       - working-directory: wonderWhy
         run: yarn install
       - working-directory: wonderWhy
-        env:
-          MODULE: ${{ matrix.module }}
-        run: |
-          if [ "$MODULE" = "root" ]; then
-            yarn b test --coverage.include="src/*.ts" --project=root
-          else
-            yarn b test --coverage.include="src/$MODULE/**" "src/$MODULE"
-          fi
+        run: ${{ matrix.cmd }}
