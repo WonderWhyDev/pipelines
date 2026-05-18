@@ -10,7 +10,7 @@ on:
         type: string
         default: main
   schedule:
-    - cron: "0 4 * * *"
+    - cron: "30 15 * * 1-6"
 
 jobs:
   api-tests:
