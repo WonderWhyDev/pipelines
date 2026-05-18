@@ -1,0 +1,149 @@
+name: "0_Web_Pipeline"
+run-name: Web_Pipeline_-_${{ inputs.branch || 'main' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'wonderWhy branch to build/test/deploy'
+        required: true
+        type: string
+        default: main
+
+jobs:
+  find_latest_version:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_version: ${{ steps.get_version.outputs.latest_version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.branch || 'main' }}
+          fetch-depth: 1
+          sparse-checkout: '.gitignore'
+          sparse-checkout-cone-mode: false
+      - id: get_version
+        run: |
+          latest_version=$(git log -1 --format=%H)
+          echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
+          echo "Resolved ${{ inputs.branch || 'main' }} to $latest_version"
+
+  lint:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [wondermove_web, wondermake_web]
+    name: Lint (${{ matrix.app }})
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.38.9
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          cd flutter/packages/auth_core && dart pub get
+          cd ../auth_flutter && flutter pub get
+          cd ../../apps/${{ matrix.app }} && flutter pub get
+
+      - name: Check formatting
+        run: |
+          cd flutter/apps/${{ matrix.app }}
+          dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: |
+          cd flutter/apps/${{ matrix.app }}
+          flutter analyze
+
+  unit_test:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: wondermove_web
+            coverage_cmd: 'bash coverage.sh'
+          - app: wondermake_web
+            coverage_cmd: './scripts/coverage.sh'
+    name: Unit Test (${{ matrix.app }})
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.38.9
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          cd flutter/packages/auth_core && dart pub get
+          cd ../auth_flutter && flutter pub get
+          cd ../../apps/${{ matrix.app }} && flutter pub get
+
+      - name: Install lcov
+        run: sudo apt-get install -y lcov
+
+      - name: Run tests with coverage
+        run: |
+          cd flutter/apps/${{ matrix.app }}
+          ${{ matrix.coverage_cmd }}
+
+  deploy_qa:
+    needs: [find_latest_version, lint, unit_test]
+    uses: ./.github/workflows/x_deploy_base_web.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: qa
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      EC2_IP: ${{ secrets.EC2_IP }}
+      AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
+      SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+      OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+      OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+      OAUTH_MOBILE_APP_CLIENT_ID: ${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}
+
+  deploy_prod:
+    needs: [find_latest_version, deploy_qa]
+    uses: ./.github/workflows/x_deploy_base_web.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: magnum
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      EC2_IP: ${{ secrets.EC2_IP }}
+      AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
+      SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+      OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+      OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+      OAUTH_MOBILE_APP_CLIENT_ID: ${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}
