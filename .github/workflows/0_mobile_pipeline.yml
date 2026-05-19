@@ -1,0 +1,150 @@
+name: "0_Mobile_Pipeline"
+run-name: Mobile_Pipeline_-_${{ inputs.branch || 'main' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'wonderWhy branch to build/test/deploy'
+        required: true
+        type: string
+        default: main
+
+jobs:
+  find_latest_version:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_version: ${{ steps.get_version.outputs.latest_version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.branch || 'main' }}
+          fetch-depth: 1
+          sparse-checkout: '.gitignore'
+          sparse-checkout-cone-mode: false
+      - id: get_version
+        run: |
+          latest_version=$(git log -1 --format=%H)
+          echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
+          echo "Resolved ${{ inputs.branch || 'main' }} to $latest_version"
+
+  lint:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Bootstrap melos workspace
+        run: |
+          cd flutter
+          dart pub get
+          dart run melos bootstrap
+
+      - name: Check formatting
+        run: |
+          cd flutter/apps/wondermove_mobile
+          dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: |
+          cd flutter/apps/wondermove_mobile
+          flutter analyze
+
+  unit_test:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Bootstrap melos workspace
+        run: |
+          cd flutter
+          dart pub get
+          dart run melos bootstrap
+
+      - name: Run tests
+        run: |
+          cd flutter/apps/wondermove_mobile
+          flutter test
+
+  beta_android:
+    needs: [find_latest_version, lint, unit_test]
+    uses: ./.github/workflows/x_deploy_base_mobile_android.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: qa
+      release_track: beta
+    secrets:
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
+
+  beta_ios:
+    needs: [find_latest_version, lint, unit_test]
+    uses: ./.github/workflows/x_deploy_base_mobile_ios.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: qa
+      release_track: beta
+    secrets:
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+
+  promote_android:
+    needs: [find_latest_version, beta_android]
+    uses: ./.github/workflows/x_deploy_base_mobile_android.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: magnum
+      release_track: promote_beta_to_production
+    secrets:
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
+
+  promote_ios:
+    needs: [find_latest_version, beta_ios]
+    uses: ./.github/workflows/x_deploy_base_mobile_ios.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: magnum
+      release_track: promote_beta_to_production
+    secrets:
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}

@@ -1,23 +1,38 @@
-name: "1_iOS_Pure_Flutter_Deploy"
-run-name: iOS_Pure_Flutter_Deploy
+name: X_Deploy_Base_Mobile_iOS
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      release_track:
-        description: 'Release track'
+      versionToBuild:
         required: true
-        type: choice
-        options:
-          - beta
-          - promote_beta_to_production
-        default: 'beta'
+        type: string
+      environment:
+        required: true
+        type: string
+      release_track:
+        required: true
+        type: string
+    secrets:
+      REPO_READ_TOKEN:
+        required: true
+      ASC_KEY_ID:
+        required: true
+      ASC_ISSUER_ID:
+        required: true
+      ASC_KEY_P8:
+        required: true
+      MATCH_PASSWORD:
+        required: true
+      MATCH_GIT_URL:
+        required: true
+      MATCH_GIT_BASIC_AUTHORIZATION:
+        required: true
 
 jobs:
   deploy:
     runs-on: macos-latest
 
     environment:
-      name: magnum
+      name: ${{ inputs.environment }}
 
     env:
       APP_DIR: wonderWhy/flutter/apps/wondermove_mobile
@@ -31,6 +46,7 @@ jobs:
           token: ${{ secrets.REPO_READ_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
+          ref: ${{ inputs.versionToBuild }}
 
       - name: Select Xcode (iOS 26 SDK required by App Store)
         uses: maxim-lobanov/setup-xcode@v1
@@ -96,9 +112,9 @@ jobs:
           GYM_VERBOSE: "true"
         run: |
           cd $APP_DIR/ios
-          echo "Running iOS lane: ${{ github.event.inputs.release_track }}"
+          echo "Running iOS lane: ${{ inputs.release_track }}"
           bundle exec fastlane --version
-          case "${{ github.event.inputs.release_track }}" in
+          case "${{ inputs.release_track }}" in
             beta)
               bundle exec fastlane beta
               ;;
@@ -106,7 +122,7 @@ jobs:
               bundle exec fastlane promote_beta_to_production
               ;;
             *)
-              echo "Unknown release_track: ${{ github.event.inputs.release_track }}"
+              echo "Unknown release_track: ${{ inputs.release_track }}"
               exit 1
               ;;
           esac

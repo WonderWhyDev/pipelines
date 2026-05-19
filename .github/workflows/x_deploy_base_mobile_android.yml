@@ -1,33 +1,34 @@
-name: "1_Android_Pure_Flutter_Deploy"
-run-name: Android_Pure_Flutter_Deploy
+name: X_Deploy_Base_Mobile_Android
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
+      versionToBuild:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
       release_track:
-        description: 'Release track'
         required: true
-        type: choice
-        options:
-          - beta
-          - production
-          - promote_beta_to_production
-        default: 'beta'
-      app_env:
-        description: 'App ENV baked into the build (--dart-define=ENV=...). Temporary: pick "test" to ship a beta pointing to test backend.'
+        type: string
+    secrets:
+      REPO_READ_TOKEN:
         required: true
-        type: choice
-        options:
-          - test
-          - production
-          - local
-        default: 'test'
+      ANDROID_KEYSTORE_BASE64:
+        required: true
+      KEYSTORE_PASSWORD:
+        required: true
+      KEY_ALIAS:
+        required: true
+      GCP_JSON_KEY:
+        required: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     environment:
-      name: magnum
+      name: ${{ inputs.environment }}
 
     env:
       APP_DIR: wonderWhy/flutter/apps/wondermove_mobile
@@ -41,6 +42,7 @@ jobs:
           token: ${{ secrets.REPO_READ_TOKEN }}
           path: wonderWhy
           fetch-depth: 1
+          ref: ${{ inputs.versionToBuild }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -116,23 +118,20 @@ jobs:
       - name: Build & Upload to Google Play
         env:
           GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
-          APP_ENV: ${{ github.event.inputs.app_env }}
+          APP_ENV: production
         run: |
           cd $APP_DIR/android
-          echo "Building app with APP_ENV=$APP_ENV on track=${{ github.event.inputs.release_track }}"
+          echo "Building app with APP_ENV=$APP_ENV on track=${{ inputs.release_track }}"
           bundle exec fastlane --version
-          case "${{ github.event.inputs.release_track }}" in
+          case "${{ inputs.release_track }}" in
             beta)
               bundle exec fastlane upload_to_open_testing
-              ;;
-            production)
-              bundle exec fastlane upload_to_production
               ;;
             promote_beta_to_production)
               bundle exec fastlane promote_beta_to_production
               ;;
             *)
-              echo "Unknown release_track: ${{ github.event.inputs.release_track }}"
+              echo "Unknown release_track: ${{ inputs.release_track }}"
               exit 1
               ;;
           esac
