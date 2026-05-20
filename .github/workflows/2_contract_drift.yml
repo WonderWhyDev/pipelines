@@ -1,0 +1,46 @@
+name: "2_Contract_Drift"
+run-name: Contract_Drift_-_${{ inputs.branch || 'main' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'wonderWhy branch to check'
+        required: true
+        type: string
+        default: main
+  schedule:
+    - cron: "30 15 * * 1-6"
+
+jobs:
+  Contract_Drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.branch || 'main' }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.11.1'
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.38.9
+          cache: true
+
+      - name: Install dependencies
+        run: yarn install
+
+      # Regenerates the OpenAPI spec from the backend routes and the Dart
+      # api_client from the spec, then fails if either differs from what is
+      # committed. See contract/README.md.
+      - name: Check contract drift
+        run: bash contract/check-drift.sh
