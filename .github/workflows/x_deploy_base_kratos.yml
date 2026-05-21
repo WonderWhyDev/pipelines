@@ -62,20 +62,9 @@ jobs:
 
       - name: Generate Android passkey origin                                                                                                                 
         run: |
-            PASSKEY_HASH=$(                                                                                                                                     
-              keytool -list -v \                                                                                                                              
-                -keystore wonderWhy/kratos/keystore.jks \
-                -alias "${{ secrets.KEY_ALIAS }}" \
-                -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \                                                                                                 
-                -keypass "${{ secrets.KEYSTORE_PASSWORD }}" 2>/dev/null \
-              | grep 'SHA256:' \                                                                                                                                
-              | sed 's/.*SHA256: //' \                                                                                                                          
-              | tr -d ':' \
-              | xxd -r -p \                                                                                                                                     
-              | base64 \                                                                                                                                      
-              | tr '+/' '-_' \
-              | tr -d '='
-            )
+            PASSKEY_HASH=$(keytool -list -v -keystore wonderWhy/kratos/keystore.jks -alias "${{ secrets.KEY_ALIAS }}" -storepass "${{ secrets.KEYSTORE_PASSWORD 
+              }}" -keypass "${{ secrets.KEY_PASSWORD }}" 2>/dev/null | grep 'SHA256:' | sed 's/.*SHA256: //' | tr -d ':' | xxd -r -p | base64 | tr '+/' '-_' | tr -d '=')
+            
             ORIGIN="android:apk-key-hash:${PASSKEY_HASH}"  
 
             # Inject into kratos config                                                                                                                         
