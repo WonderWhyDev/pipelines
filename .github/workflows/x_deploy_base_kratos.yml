@@ -66,11 +66,7 @@ jobs:
               }}" -keypass "${{ secrets.KEY_PASSWORD }}" 2>/dev/null | grep 'SHA256:' | sed 's/.*SHA256: //' | tr -d ':' | xxd -r -p | base64 | tr '+/' '-_' | tr -d '=')
             
             ORIGIN="android:apk-key-hash:${PASSKEY_HASH}"  
-
-            # Inject into kratos config                                                                                                                         
-            sed -i "/origins:/a\\            - \"${ORIGIN}\"" wonderWhy/kratos/kratos.yml   
-
-            # Clean up keystore — not needed on the server                                                                                                      
+            sed -i "s|ANDROID_PASSKEY_ORIGIN_PLACEHOLDER|android:apk-key-hash:${PASSKEY_HASH}|" wonderWhy/kratos/kratos.yml
             rm wonderWhy/kratos/keystore.jks
 
       - run: |
