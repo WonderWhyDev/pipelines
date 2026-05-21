@@ -65,7 +65,7 @@ jobs:
             RAW_SHA256=$(keytool -exportcert -alias "${{ secrets.KEY_ALIAS }}" \
               -keystore wonderWhy/kratos/keystore.jks \
               -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-              -keypass "${{ secrets.KEY_PASSWORD }}" | openssl sha256 -binary | base64)
+              -keypass "${{ secrets.KEYSTORE_PASSWORD }}" | openssl sha256 -binary | base64)
 
             PASSKEY_HASH=$(echo -n "$RAW_SHA256" | tr '+/' '-_' | tr -d '=')
 
@@ -74,7 +74,6 @@ jobs:
               exit 1
             fi
             
-            ORIGIN="android:apk-key-hash:${PASSKEY_HASH}"  
             sed -i "s|ANDROID_PASSKEY_ORIGIN_PLACEHOLDER|android:apk-key-hash:${PASSKEY_HASH}|" wonderWhy/kratos/kratos.yml
             rm wonderWhy/kratos/keystore.jks
 
