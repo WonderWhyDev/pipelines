@@ -94,7 +94,7 @@ jobs:
     uses: ./.github/workflows/x_deploy_base_mobile_android.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
-      environment: qa
+      environment: magnum
       release_track: beta
     secrets:
       REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
@@ -108,7 +108,7 @@ jobs:
     uses: ./.github/workflows/x_deploy_base_mobile_ios.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
-      environment: qa
+      environment: magnum
       release_track: beta
     secrets:
       REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
