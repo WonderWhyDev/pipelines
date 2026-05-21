@@ -62,8 +62,17 @@ jobs:
 
       - name: Generate Android passkey origin                                                                                                                 
         run: |
-            PASSKEY_HASH=$(keytool -list -v -keystore wonderWhy/kratos/keystore.jks -alias "${{ secrets.KEY_ALIAS }}" -storepass "${{ secrets.KEYSTORE_PASSWORD 
-              }}" -keypass "${{ secrets.KEY_PASSWORD }}" 2>/dev/null | grep 'SHA256:' | sed 's/.*SHA256: //' | tr -d ':' | xxd -r -p | base64 | tr '+/' '-_' | tr -d '=')
+            RAW_SHA256=$(keytool -exportcert -alias "${{ secrets.KEY_ALIAS }}" \
+              -keystore wonderWhy/kratos/keystore.jks \
+              -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+              -keypass "${{ secrets.KEY_PASSWORD }}" | openssl sha256 -binary | base64)
+
+            PASSKEY_HASH=$(echo -n "$RAW_SHA256" | tr '+/' '-_' | tr -d '=')
+
+            if [ -z "$PASSKEY_HASH" ]; then
+              echo "ERROR: Failed to generate PASSKEY_HASH. Verify your keystore credentials."
+              exit 1
+            fi
             
             ORIGIN="android:apk-key-hash:${PASSKEY_HASH}"  
             sed -i "s|ANDROID_PASSKEY_ORIGIN_PLACEHOLDER|android:apk-key-hash:${PASSKEY_HASH}|" wonderWhy/kratos/kratos.yml
