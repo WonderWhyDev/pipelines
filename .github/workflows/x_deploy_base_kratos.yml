@@ -27,6 +27,12 @@ on:
             required: true
         DOMAIN:
             required: true
+        ANDROID_KEYSTORE_BASE64:
+            required: true
+        KEYSTORE_PASSWORD:
+            required: true
+        KEY_ALIAS:
+            required: true
 
 jobs:
   deploy:
@@ -47,6 +53,36 @@ jobs:
           sparse-checkout: 'kratos'
           sparse-checkout-cone-mode: false
           ref: ${{ inputs.versionToBuild }}
+
+      - name: Decode Keystore
+        run: |
+          cd wonderWhy
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode \
+            > kratos/keystore.jks
+
+      - name: Generate Android passkey origin                                                                                                                 
+        run: |
+            PASSKEY_HASH=$(                                                                                                                                     
+              keytool -list -v \                                                                                                                              
+                -keystore wonderWhy/kratos/keystore.jks \
+                -alias "${{ secrets.KEY_ALIAS }}" \
+                -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \                                                                                                 
+                -keypass "${{ secrets.KEYSTORE_PASSWORD }}" 2>/dev/null \
+              | grep 'SHA256:' \                                                                                                                                
+              | sed 's/.*SHA256: //' \                                                                                                                          
+              | tr -d ':' \
+              | xxd -r -p \                                                                                                                                     
+              | base64 \                                                                                                                                      
+              | tr '+/' '-_' \
+              | tr -d '='
+            )
+            ORIGIN="android:apk-key-hash:${PASSKEY_HASH}"  
+
+            # Inject into kratos config                                                                                                                         
+            sed -i "/origins:/a\\            - \"${ORIGIN}\"" wonderWhy/kratos/kratos.yml   
+
+            # Clean up keystore — not needed on the server                                                                                                      
+            rm wonderWhy/kratos/keystore.jks
 
       - run: |
           cd wonderWhy

@@ -27,6 +27,9 @@ jobs:
       SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
       SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
       DOMAIN: "${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}"
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
 
   deploy_prod:
     needs: [find_latest_version, deploy_qa]
@@ -44,3 +47,6 @@ jobs:
       SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
       SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
       DOMAIN: "${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}"
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
