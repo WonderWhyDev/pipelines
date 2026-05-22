@@ -27,11 +27,7 @@ on:
             required: true
         DOMAIN:
             required: true
-        ANDROID_KEYSTORE_BASE64:
-            required: true
-        KEYSTORE_PASSWORD:
-            required: true
-        KEY_ALIAS:
+        KEYSTORE_HASH_KEY:
             required: true
 
 jobs:
@@ -54,28 +50,10 @@ jobs:
           sparse-checkout-cone-mode: false
           ref: ${{ inputs.versionToBuild }}
 
-      - name: Decode Keystore
-        run: |
-          cd wonderWhy
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode \
-            > kratos/keystore.jks
-
-      - name: Generate Android passkey origin                                                                                                                 
-        run: |
-            RAW_SHA256=$(keytool -exportcert -alias "${{ secrets.KEY_ALIAS }}" \
-              -keystore wonderWhy/kratos/keystore.jks \
-              -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-              -keypass "${{ secrets.KEYSTORE_PASSWORD }}" | openssl sha256 -binary | base64)
-
-            PASSKEY_HASH=$(echo -n "$RAW_SHA256" | tr '+/' '-_' | tr -d '=')
-
-            if [ -z "$PASSKEY_HASH" ]; then
-              echo "ERROR: Failed to generate PASSKEY_HASH. Verify your keystore credentials."
-              exit 1
-            fi
-            
-            sed -i "s|ANDROID_PASSKEY_ORIGIN_PLACEHOLDER|android:apk-key-hash:${PASSKEY_HASH}|" wonderWhy/kratos/kratos.yml
-            rm wonderWhy/kratos/keystore.jks
+      - name: Assign Android passkey origin
+        env: 
+          KEYSTORE_HASH_KEY: ${{ secrets.KEYSTORE_HASH_KEY }}
+        run: sed -i "s|ANDROID_PASSKEY_ORIGIN_PLACEHOLDER|android:apk-key-hash:$KEYSTORE_HASH_KEY|" wonderWhy/kratos/kratos.yml
 
       - run: |
           cd wonderWhy
