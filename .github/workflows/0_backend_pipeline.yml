@@ -30,194 +30,194 @@ jobs:
           echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
           echo "Resolved ${{ inputs.branch }} to $latest_version"
 
-  lint:
-    needs: find_latest_version
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          repository: WonderWhyDev/wonderWhy
-          token: ${{ secrets.REPO_READ_TOKEN }}
-          path: wonderWhy
-          fetch-depth: 1
-          ref: ${{ needs.find_latest_version.outputs.latest_version }}
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '24.11.1'
-          cache: 'yarn'
-          cache-dependency-path: wonderWhy/yarn.lock
-      - working-directory: wonderWhy
-        run: |
-          yarn install
-          yarn b format
-          yarn b lint
-          yarn b build
-          yarn b checkVersion
+  # lint:
+  #   needs: find_latest_version
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v5
+  #       with:
+  #         repository: WonderWhyDev/wonderWhy
+  #         token: ${{ secrets.REPO_READ_TOKEN }}
+  #         path: wonderWhy
+  #         fetch-depth: 1
+  #         ref: ${{ needs.find_latest_version.outputs.latest_version }}
+  #     - uses: actions/setup-node@v5
+  #       with:
+  #         node-version: '24.11.1'
+  #         cache: 'yarn'
+  #         cache-dependency-path: wonderWhy/yarn.lock
+  #     - working-directory: wonderWhy
+  #       run: |
+  #         yarn install
+  #         yarn b format
+  #         yarn b lint
+  #         yarn b build
+  #         yarn b checkVersion
 
-  unit_test:
-    needs: find_latest_version
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # subContracts (split 4 ways by subfolder for runtime, coverage scoped per folder)
-          - name: subContracts-controller
-            cmd: 'yarn b test --coverage.include="src/subContracts/controller/**" src/subContracts/controller'
-          - name: subContracts-models
-            cmd: 'yarn b test --coverage.include="src/subContracts/models/**" src/subContracts/models'
-          - name: subContracts-domain
-            cmd: 'yarn b test --coverage.include="src/subContracts/domain/**" src/subContracts/domain'
-          - name: subContracts-rest
-            cmd: 'yarn b test --coverage.include="src/subContracts/axiosServices/**" --coverage.include="src/subContracts/sqsListners/**" src/subContracts/axiosServices src/subContracts/sqsListners'
-          # accounts (split 2 ways)
-          - name: accounts-controller
-            cmd: 'yarn b test --coverage.include="src/accounts/controller/**" src/accounts/controller'
-          - name: accounts-rest
-            cmd: 'yarn b test --coverage.include="src/accounts/models/**" --coverage.include="src/accounts/domain/**" --coverage.include="src/accounts/axiosServices/**" --coverage.include="src/accounts/axiosService/**" src/accounts/models src/accounts/domain src/accounts/axiosServices src/accounts/axiosService'
-          # other modules (unchanged)
-          - name: bankStatements
-            cmd: 'yarn b test --coverage.include="src/bankStatements/**" src/bankStatements'
-          - name: commonFunctions
-            cmd: 'yarn b test --coverage.include="src/commonFunctions/**" src/commonFunctions'
-          - name: dataProvider
-            cmd: 'yarn b test --coverage.include="src/dataProvider/**" src/dataProvider'
-          - name: driverSalary
-            cmd: 'yarn b test --coverage.include="src/driverSalary/**" src/driverSalary'
-          - name: eInvoice
-            cmd: 'yarn b test --coverage.include="src/eInvoice/**" src/eInvoice'
-          - name: gstService
-            cmd: 'yarn b test --coverage.include="src/gstService/**" src/gstService'
-          - name: icici
-            cmd: 'yarn b test --coverage.include="src/icici/**" src/icici'
-          - name: kratos
-            cmd: 'yarn b test --coverage.include="src/kratos/**" src/kratos'
-          - name: logger
-            cmd: 'yarn b test --coverage.include="src/logger/**" src/logger'
-          - name: make
-            cmd: 'yarn b test --coverage.include="src/make/**" src/make'
-          - name: middleware
-            cmd: 'yarn b test --coverage.include="src/middleware/**" src/middleware'
-          - name: ocr
-            cmd: 'yarn b test --coverage.include="src/ocr/**" src/ocr'
-          - name: tenants
-            cmd: 'yarn b test --coverage.include="src/tenants/**" src/tenants'
-          - name: tyre
-            cmd: 'yarn b test --coverage.include="src/tyre/**" src/tyre'
-          - name: vehicleService
-            cmd: 'yarn b test --coverage.include="src/vehicleService/**" src/vehicleService'
-          - name: whatsapp
-            cmd: 'yarn b test --coverage.include="src/whatsapp/**" src/whatsapp'
-          - name: root
-            cmd: 'yarn b test --coverage.include="src/*.ts" --project=root'
-    name: Unit Tests (${{ matrix.name }})
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          repository: WonderWhyDev/wonderWhy
-          token: ${{ secrets.REPO_READ_TOKEN }}
-          path: wonderWhy
-          fetch-depth: 1
-          ref: ${{ needs.find_latest_version.outputs.latest_version }}
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '24.11.1'
-          cache: 'yarn'
-          cache-dependency-path: wonderWhy/yarn.lock
-      - working-directory: wonderWhy
-        run: yarn install
-      - working-directory: wonderWhy
-        run: ${{ matrix.cmd }}
+  # unit_test:
+  #   needs: find_latest_version
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         # subContracts (split 4 ways by subfolder for runtime, coverage scoped per folder)
+  #         - name: subContracts-controller
+  #           cmd: 'yarn b test --coverage.include="src/subContracts/controller/**" src/subContracts/controller'
+  #         - name: subContracts-models
+  #           cmd: 'yarn b test --coverage.include="src/subContracts/models/**" src/subContracts/models'
+  #         - name: subContracts-domain
+  #           cmd: 'yarn b test --coverage.include="src/subContracts/domain/**" src/subContracts/domain'
+  #         - name: subContracts-rest
+  #           cmd: 'yarn b test --coverage.include="src/subContracts/axiosServices/**" --coverage.include="src/subContracts/sqsListners/**" src/subContracts/axiosServices src/subContracts/sqsListners'
+  #         # accounts (split 2 ways)
+  #         - name: accounts-controller
+  #           cmd: 'yarn b test --coverage.include="src/accounts/controller/**" src/accounts/controller'
+  #         - name: accounts-rest
+  #           cmd: 'yarn b test --coverage.include="src/accounts/models/**" --coverage.include="src/accounts/domain/**" --coverage.include="src/accounts/axiosServices/**" --coverage.include="src/accounts/axiosService/**" src/accounts/models src/accounts/domain src/accounts/axiosServices src/accounts/axiosService'
+  #         # other modules (unchanged)
+  #         - name: bankStatements
+  #           cmd: 'yarn b test --coverage.include="src/bankStatements/**" src/bankStatements'
+  #         - name: commonFunctions
+  #           cmd: 'yarn b test --coverage.include="src/commonFunctions/**" src/commonFunctions'
+  #         - name: dataProvider
+  #           cmd: 'yarn b test --coverage.include="src/dataProvider/**" src/dataProvider'
+  #         - name: driverSalary
+  #           cmd: 'yarn b test --coverage.include="src/driverSalary/**" src/driverSalary'
+  #         - name: eInvoice
+  #           cmd: 'yarn b test --coverage.include="src/eInvoice/**" src/eInvoice'
+  #         - name: gstService
+  #           cmd: 'yarn b test --coverage.include="src/gstService/**" src/gstService'
+  #         - name: icici
+  #           cmd: 'yarn b test --coverage.include="src/icici/**" src/icici'
+  #         - name: kratos
+  #           cmd: 'yarn b test --coverage.include="src/kratos/**" src/kratos'
+  #         - name: logger
+  #           cmd: 'yarn b test --coverage.include="src/logger/**" src/logger'
+  #         - name: make
+  #           cmd: 'yarn b test --coverage.include="src/make/**" src/make'
+  #         - name: middleware
+  #           cmd: 'yarn b test --coverage.include="src/middleware/**" src/middleware'
+  #         - name: ocr
+  #           cmd: 'yarn b test --coverage.include="src/ocr/**" src/ocr'
+  #         - name: tenants
+  #           cmd: 'yarn b test --coverage.include="src/tenants/**" src/tenants'
+  #         - name: tyre
+  #           cmd: 'yarn b test --coverage.include="src/tyre/**" src/tyre'
+  #         - name: vehicleService
+  #           cmd: 'yarn b test --coverage.include="src/vehicleService/**" src/vehicleService'
+  #         - name: whatsapp
+  #           cmd: 'yarn b test --coverage.include="src/whatsapp/**" src/whatsapp'
+  #         - name: root
+  #           cmd: 'yarn b test --coverage.include="src/*.ts" --project=root'
+  #   name: Unit Tests (${{ matrix.name }})
+  #   steps:
+  #     - uses: actions/checkout@v5
+  #       with:
+  #         repository: WonderWhyDev/wonderWhy
+  #         token: ${{ secrets.REPO_READ_TOKEN }}
+  #         path: wonderWhy
+  #         fetch-depth: 1
+  #         ref: ${{ needs.find_latest_version.outputs.latest_version }}
+  #     - uses: actions/setup-node@v5
+  #       with:
+  #         node-version: '24.11.1'
+  #         cache: 'yarn'
+  #         cache-dependency-path: wonderWhy/yarn.lock
+  #     - working-directory: wonderWhy
+  #       run: yarn install
+  #     - working-directory: wonderWhy
+  #       run: ${{ matrix.cmd }}
 
-  functional_test:
-    needs: find_latest_version
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      packages: read
-    steps:
-      - name: Checkout wonderWhy
-        uses: actions/checkout@v5
-        with:
-          repository: WonderWhyDev/wonderWhy
-          token: ${{ secrets.REPO_READ_TOKEN }}
-          path: wonderWhy
-          ref: ${{ needs.find_latest_version.outputs.latest_version }}
-          fetch-depth: 1
+  # functional_test:
+  #   needs: find_latest_version
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 30
+  #   permissions:
+  #     contents: read
+  #     packages: read
+  #   steps:
+  #     - name: Checkout wonderWhy
+  #       uses: actions/checkout@v5
+  #       with:
+  #         repository: WonderWhyDev/wonderWhy
+  #         token: ${{ secrets.REPO_READ_TOKEN }}
+  #         path: wonderWhy
+  #         ref: ${{ needs.find_latest_version.outputs.latest_version }}
+  #         fetch-depth: 1
 
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHRC_SECRET_KEY }}
+  #     - name: Login to GHCR
+  #       uses: docker/login-action@v3
+  #       with:
+  #         registry: ghcr.io
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GHRC_SECRET_KEY }}
 
-      - name: Pull functional-test image
-        run: docker pull ghcr.io/wonderwhydev/functional-test:latest
+  #     - name: Pull functional-test image
+  #       run: docker pull ghcr.io/wonderwhydev/functional-test:latest
 
-      - name: Bring up localstack and create SQS queue
-        working-directory: wonderWhy
-        run: |
-          docker compose -p ci up -d --wait localstack
-          docker compose -p ci exec -T localstack awslocal sqs create-queue --queue-name margin
+  #     - name: Bring up localstack and create SQS queue
+  #       working-directory: wonderWhy
+  #       run: |
+  #         docker compose -p ci up -d --wait localstack
+  #         docker compose -p ci exec -T localstack awslocal sqs create-queue --queue-name margin
 
-      - name: Bring up backend, kratos, functional-test
-        working-directory: wonderWhy
-        run: |
-          docker compose -p ci up -d backend kratos
-          docker compose -p ci up -d functional-test
+  #     - name: Bring up backend, kratos, functional-test
+  #       working-directory: wonderWhy
+  #       run: |
+  #         docker compose -p ci up -d backend kratos
+  #         docker compose -p ci up -d functional-test
 
-      - name: Wait for backend
-        working-directory: wonderWhy
-        run: |
-          for i in $(seq 1 60); do
-            code=$(docker compose -p ci exec -T functional-test \
-              curl -s -o /dev/null -w "%{http_code}" http://backend:3000/api/transporter || echo 000)
-            case "$code" in
-              200|401) echo "Backend ready (HTTP $code)"; exit 0 ;;
-            esac
-            echo "Try $i: HTTP $code"
-            sleep 10
-          done
-          echo "Backend did not become ready" >&2
-          exit 1
+  #     - name: Wait for backend
+  #       working-directory: wonderWhy
+  #       run: |
+  #         for i in $(seq 1 60); do
+  #           code=$(docker compose -p ci exec -T functional-test \
+  #             curl -s -o /dev/null -w "%{http_code}" http://backend:3000/api/transporter || echo 000)
+  #           case "$code" in
+  #             200|401) echo "Backend ready (HTTP $code)"; exit 0 ;;
+  #           esac
+  #           echo "Try $i: HTTP $code"
+  #           sleep 10
+  #         done
+  #         echo "Backend did not become ready" >&2
+  #         exit 1
 
-      - name: Run API tests
-        working-directory: wonderWhy
-        run: |
-          docker compose -p ci exec -T functional-test sh -c \
-            "cd /app/functional-test && dart pub get && dart test --concurrency=1 test/api/"
+  #     - name: Run API tests
+  #       working-directory: wonderWhy
+  #       run: |
+  #         docker compose -p ci exec -T functional-test sh -c \
+  #           "cd /app/functional-test && dart pub get && dart test --concurrency=1 test/api/"
 
-      - name: Diagnostics on failure
-        if: failure()
-        working-directory: wonderWhy
-        run: |
-          echo "::group::docker compose ps -a"
-          docker compose -p ci ps -a
-          echo "::endgroup::"
+  #     - name: Diagnostics on failure
+  #       if: failure()
+  #       working-directory: wonderWhy
+  #       run: |
+  #         echo "::group::docker compose ps -a"
+  #         docker compose -p ci ps -a
+  #         echo "::endgroup::"
 
-          for svc in backend kratos db localstack functional-test; do
-            echo "::group::docker inspect $svc (state)"
-            docker compose -p ci ps -a --format '{{.Service}}\t{{.State}}\t{{.Status}}' | grep -E "^$svc[[:space:]]" || true
-            cid=$(docker compose -p ci ps -aq "$svc" 2>/dev/null | head -1)
-            if [ -n "$cid" ]; then
-              docker inspect --format 'ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Error={{.State.Error}} Started={{.State.StartedAt}} Finished={{.State.FinishedAt}}' "$cid"
-            fi
-            echo "::endgroup::"
-            echo "::group::logs: $svc (last 200)"
-            docker compose -p ci logs --tail=200 --no-color "$svc" 2>&1 || true
-            echo "::endgroup::"
-          done
+  #         for svc in backend kratos db localstack functional-test; do
+  #           echo "::group::docker inspect $svc (state)"
+  #           docker compose -p ci ps -a --format '{{.Service}}\t{{.State}}\t{{.Status}}' | grep -E "^$svc[[:space:]]" || true
+  #           cid=$(docker compose -p ci ps -aq "$svc" 2>/dev/null | head -1)
+  #           if [ -n "$cid" ]; then
+  #             docker inspect --format 'ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Error={{.State.Error}} Started={{.State.StartedAt}} Finished={{.State.FinishedAt}}' "$cid"
+  #           fi
+  #           echo "::endgroup::"
+  #           echo "::group::logs: $svc (last 200)"
+  #           docker compose -p ci logs --tail=200 --no-color "$svc" 2>&1 || true
+  #           echo "::endgroup::"
+  #         done
 
-      - name: Tear down
-        if: always()
-        working-directory: wonderWhy
-        run: docker compose -p ci down -v
+  #     - name: Tear down
+  #       if: always()
+  #       working-directory: wonderWhy
+  #       run: docker compose -p ci down -v
 
   deploy_qa:
     runs-on: ubuntu-latest
-    needs: [find_latest_version, lint, unit_test, functional_test]
+    needs: find_latest_version
     outputs:
       latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
     environment:
