@@ -76,8 +76,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - app: wondermove_web
-            coverage_cmd: 'bash coverage.sh'
           - app: wondermake_web
             coverage_cmd: './scripts/coverage.sh'
     name: Unit Test (${{ matrix.app }})
@@ -110,8 +108,115 @@ jobs:
           cd flutter/apps/${{ matrix.app }}
           ${{ matrix.coverage_cmd }}
 
+  # wondermove_web's suite is large, so it runs as parallel shards (one runner
+  # per group) that each emit a partial lcov. coverage_wondermove merges those
+  # partials and runs the single global coverage gate. To add a feature to its
+  # own shard, list its dirs in `paths` AND add its folder name to DEDICATED in
+  # the "rest" group below. The "rest" group runs everything not dedicated, so a
+  # new feature missed here still runs there (and overlaps are harmless — line
+  # coverage is recomputed from the union of hits on merge).
+  unit_test_wondermove:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: trips
+            paths: 'test/features/trips'
+          - group: trip_status
+            paths: 'test/features/trip_status test/features/driver_trip_expense_report'
+          - group: vehicle_maintenance
+            paths: 'test/features/vehicle_maintenance test/features/toll test/features/vehicle_attendance test/features/driver_attendance'
+          - group: workshop_fuel
+            paths: 'test/features/workshop test/features/fuel'
+          - group: accounting
+            paths: 'test/features/accounting test/features/operations_dashboard test/features/driver_expense test/features/driver_salary test/features/final_pay_approval'
+          - group: vehicle_user
+            paths: 'test/features/vehicle_management test/features/vehicle_documents test/features/user_management test/features/unload_trip'
+          - group: rest
+            paths: ''
+    name: Unit Test wondermove (${{ matrix.group }})
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.38.9
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          cd flutter/packages/auth_core && dart pub get
+          cd ../auth_flutter && flutter pub get
+          cd ../../apps/wondermove_web && flutter pub get
+
+      - name: Run shard tests with coverage
+        run: |
+          cd flutter/apps/wondermove_web
+          PATHS="${{ matrix.paths }}"
+          if [ -z "$PATHS" ]; then
+            # "rest" shard: core/shared/helpers + every feature not given its own shard.
+            DEDICATED="trips|trip_status|driver_trip_expense_report|vehicle_maintenance|toll|vehicle_attendance|driver_attendance|workshop|fuel|accounting|operations_dashboard|driver_expense|driver_salary|final_pay_approval|vehicle_management|vehicle_documents|user_management|unload_trip"
+            FEATURES=$(ls -d test/features/*/ | sed 's:/*$::' | grep -vE "/($DEDICATED)$" | tr '\n' ' ')
+            PATHS="test/core test/shared test/helpers $FEATURES"
+          fi
+          echo "Running: flutter test $PATHS"
+          flutter test $PATHS \
+            --coverage \
+            --concurrency="$(nproc)" \
+            --reporter=json | python3 scripts/test_reporter.py
+
+      - name: Upload coverage shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: wm-coverage-${{ matrix.group }}
+          path: flutter/apps/wondermove_web/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 1
+
+  coverage_wondermove:
+    needs: [find_latest_version, unit_test_wondermove]
+    runs-on: ubuntu-latest
+    name: Coverage Gate (wondermove_web)
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - name: Install lcov
+        run: sudo apt-get install -y lcov
+
+      - name: Download coverage shards
+        uses: actions/download-artifact@v4
+        with:
+          path: coverage-shards
+          pattern: wm-coverage-*
+
+      - name: Merge shards and check coverage threshold
+        run: |
+          cd flutter/apps/wondermove_web
+          mkdir -p coverage
+          ADD=()
+          for f in "$GITHUB_WORKSPACE"/coverage-shards/*/lcov.info; do
+            ADD+=(-a "$f")
+          done
+          echo "Merging ${#ADD[@]} shard files into coverage/lcov.info"
+          lcov "${ADD[@]}" -o coverage/lcov.info --ignore-errors inconsistent
+          bash coverage.sh --gate-only
+
   deploy_qa:
-    needs: [find_latest_version, lint, unit_test]
+    needs: [find_latest_version, lint, unit_test, coverage_wondermove]
     uses: ./.github/workflows/x_deploy_base_web.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
