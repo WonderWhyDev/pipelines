@@ -319,7 +319,8 @@ jobs:
               ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
               ${{ secrets.COMPOSITE_API_KEY }} \
               ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} \
-              ${{ secrets.ENV_TYPE }}
+              ${{ secrets.ENV_TYPE }} \
+              ${{ secrets.GOOGLE_VERTEX_CREDENTIALS }}
 
   deploy_prod:
     runs-on: ubuntu-latest
@@ -421,4 +422,5 @@ jobs:
               ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
               ${{ secrets.COMPOSITE_API_KEY }} \
               ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} \
-              ${{ secrets.ENV_TYPE }}
+              ${{ secrets.ENV_TYPE }} \
+              ${{ secrets.GOOGLE_VERTEX_CREDENTIALS }}
