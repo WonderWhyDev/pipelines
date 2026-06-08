@@ -62,6 +62,11 @@ jobs:
           cd flutter/apps/wondermove_mobile
           flutter analyze
 
+      - name: Check test mocking (HTTP-level only, no state-level mocks)
+        run: |
+          cd flutter/apps/wondermove_mobile
+          dart run test_lints:check test
+
   unit_test:
     needs: find_latest_version
     runs-on: ubuntu-latest

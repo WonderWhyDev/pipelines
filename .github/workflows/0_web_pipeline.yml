@@ -69,6 +69,11 @@ jobs:
           cd flutter/apps/${{ matrix.app }}
           flutter analyze
 
+      - name: Check test mocking (HTTP-level only, no state-level mocks)
+        run: |
+          cd flutter/apps/${{ matrix.app }}
+          dart run test_lints:check test
+
   unit_test:
     needs: find_latest_version
     runs-on: ubuntu-latest
