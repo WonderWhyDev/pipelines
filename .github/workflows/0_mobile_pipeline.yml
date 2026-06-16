@@ -45,6 +45,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.44.0
 
       - name: Bootstrap melos workspace
         run: |
@@ -64,8 +65,8 @@ jobs:
 
       - name: Check test mocking (HTTP-level only, no state-level mocks)
         run: |
-          cd flutter/apps/wondermove_mobile
-          dart run test_lints:check test
+          cd flutter/packages/test_lints && dart pub get
+          dart run bin/check.dart ../../apps/wondermove_mobile/test
 
   unit_test:
     needs: find_latest_version
@@ -82,6 +83,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.44.0
 
       - name: Bootstrap melos workspace
         run: |

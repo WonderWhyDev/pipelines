@@ -50,7 +50,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.38.9
+          flutter-version: 3.44.0
           cache: true
 
       - name: Install dependencies
@@ -71,8 +71,8 @@ jobs:
 
       - name: Check test mocking (HTTP-level only, no state-level mocks)
         run: |
-          cd flutter/apps/${{ matrix.app }}
-          dart run test_lints:check test
+          cd flutter/packages/test_lints && dart pub get
+          dart run bin/check.dart ../../apps/${{ matrix.app }}/test
 
   unit_test:
     needs: find_latest_version
@@ -96,7 +96,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.38.9
+          flutter-version: 3.44.0
           cache: true
 
       - name: Install dependencies
@@ -154,7 +154,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.38.9
+          flutter-version: 3.44.0
           cache: true
 
       - name: Install dependencies
