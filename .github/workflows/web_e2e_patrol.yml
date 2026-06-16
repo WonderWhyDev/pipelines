@@ -1,0 +1,85 @@
+# Patrol web E2E — runs the wondermove_web app against the real backend stack
+# THROUGH nginx, exactly like production's request path. Mirrors the recipe
+# proven locally; on ubuntu-latest (linux/amd64) the Rosetta problems that bite
+# on Apple Silicon (adb crash, slow DDC compile) do not occur.
+#
+# Topology: the backend stack runs in docker (nginx published on :80); Patrol
+# runs natively on the runner and serves the instrumented app on :3005. The app
+# resolves its API from Uri.base.host (port 80) -> nginx -> backend/kratos, so
+# /auth + /api flow through nginx. The smoke variant only swaps nginx's upstream.
+#
+# Requires two app changes that ship with this (already in the repo):
+#   - auth_interceptor sends withCredentials so the Ory cookie reaches /api
+#     cross-port; nginx-local returns credentialed CORS for /api.
+#   - login_screen skips its post-login full-page reload under --dart-define=E2E
+#     (a full navigation destroys Patrol's in-page test context).
+#
+# Base href: prod serves wondermove_web at /new/, but Patrol's web server serves
+# at the app's base href and its readiness probe hits "/". We flip the base href
+# to "/" for the throwaway CI build. FOLLOW-UP: restore the $FLUTTER_BASE_HREF
+# placeholder in web/index.html and pass --base-href=/new/ in the prod build so
+# this sed is unnecessary.
+
+name: Web E2E (Patrol)
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 2 * * *"   # nightly, once stable
+
+jobs:
+  patrol-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.0"
+          channel: stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Activate Patrol CLI
+        run: dart pub global activate patrol_cli
+
+      - name: Bring up backend stack (nginx on :80)
+        run: |
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy up -d --wait db localstack mailpit
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T localstack \
+            awslocal sqs create-queue --queue-name margin
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy up -d kratos backend nginx functional-test
+
+      - name: Wait for backend & seed master tenant
+        run: |
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test \
+            sh -c "BACKEND_URL=http://backend:3000/api /app/functional-test/bin/wait-for-backend.sh"
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test \
+            sh -c "cd /app/functional-test && dart pub get && dart run bin/seed.dart"
+
+      - name: Install Playwright Chromium
+        run: npx --yes playwright install --with-deps chromium
+
+      - name: Run Patrol web E2E
+        working-directory: flutter/apps/wondermove_web
+        run: |
+          sed -i 's#<base href="/new/">#<base href="/">#' web/index.html
+          flutter pub get
+          export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
+          PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
+            --target patrol_test/spike/login_smoke_test.dart \
+            --web-port 3005 \
+            --dart-define=ENV=local --dart-define=E2E=true \
+            --web-headless true --web-server-timeout 600 \
+            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader"]'
+
+      - name: Upload Patrol report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: flutter/apps/wondermove_web/playwright-report
+          if-no-files-found: ignore
