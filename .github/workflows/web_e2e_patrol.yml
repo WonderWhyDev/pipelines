@@ -75,12 +75,24 @@ jobs:
             awslocal sqs create-queue --queue-name margin
           docker compose -f compose.yml -f compose.local.yml -p wonderwhy up -d kratos backend nginx functional-test
 
+      # bin/ is gitignored in the monorepo (bin/wait-for-backend.sh + bin/seed.dart
+      # are absent on CI, and the volume mount hides any baked-in copy). Inline the
+      # poll and seed via the tracked tool/seed_journey.dart (a superset seed that
+      # ensures the master tenant + admin and links the kratos identity).
       - name: Wait for backend & seed master tenant
         run: |
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test sh -c '
+            URL="http://backend:3000/api/transporter"
+            echo "Waiting for backend at $URL ..."
+            for i in $(seq 1 90); do
+              code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo 000)
+              case "$code" in 200|401) echo "Backend ready (HTTP $code)"; exit 0;; esac
+              echo "Try $i: backend not ready (HTTP $code)"; sleep 5
+            done
+            echo "Backend did not become ready in time"; exit 1
+          '
           docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test \
-            sh -c "BACKEND_URL=http://backend:3000/api /app/functional-test/bin/wait-for-backend.sh"
-          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test \
-            sh -c "cd /app/functional-test && dart pub get && dart run bin/seed.dart"
+            sh -c "cd /app/functional-test && dart pub get && dart run tool/seed_journey.dart"
 
       - name: Install Playwright Chromium
         run: npx --yes playwright install --with-deps chromium
