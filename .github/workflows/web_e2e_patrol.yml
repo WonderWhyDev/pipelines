@@ -24,6 +24,12 @@ name: Web E2E (Patrol)
 
 on:
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "wonderWhy branch to test"
+        required: false
+        type: string
+        default: main
   # schedule:
   #   - cron: "0 2 * * *"   # nightly, once stable
 
@@ -32,7 +38,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
+      # The code + compose files live in the wonderWhy monorepo, not here, so
+      # check THAT out (a bare checkout left compose.yml absent -> the bring-up
+      # step failed with "compose.yml: no such file or directory").
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.branch || 'main' }}
+          fetch-depth: 1
 
       - uses: subosito/flutter-action@v2
         with:
@@ -45,6 +59,14 @@ jobs:
 
       - name: Activate Patrol CLI
         run: dart pub global activate patrol_cli
+
+      # functional-test image is private on GHCR; the rest are public.
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHRC_SECRET_KEY }}
 
       - name: Bring up backend stack (nginx on :80)
         run: |
