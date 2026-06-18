@@ -126,9 +126,16 @@ jobs:
       # Non-blocking: step 4 (payout UI) awaits a seeded driver-advance payable.
       # Steps 1-3 (login, HDFC secret via UI, OCR upload via UI) are the unique
       # UI coverage here; the payout path itself is gated green above.
+      # --lang=en-US: headless chromium otherwise exposes an empty/malformed
+      # navigator.languages, and Flutter's engine init throws "Incorrect locale
+      # information provided" (parseBrowserLanguages) before any test can run.
       - name: Patrol driver-advance journey (UI, non-blocking)
         continue-on-error: true
         working-directory: flutter/apps/wondermove_web
+        env:
+          LANG: en_US.UTF-8
+          LANGUAGE: en_US:en
+          LC_ALL: en_US.UTF-8
         run: |
           sed -i 's#<base href="/new/">#<base href="/">#' web/index.html
           flutter pub get
@@ -138,7 +145,7 @@ jobs:
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
             --web-headless true --web-server-timeout 600 \
-            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader"]' \
+            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
             --verbose
 
       - name: Upload Patrol report

@@ -119,8 +119,15 @@ jobs:
       - name: Install Playwright Chromium (match patrol web_runner)
         run: npx --yes playwright@1.56.0 install --with-deps chromium
 
+      # --lang=en-US: headless chromium otherwise exposes an empty/malformed
+      # navigator.languages, and Flutter's engine init throws "Incorrect locale
+      # information provided" (parseBrowserLanguages) before any test can run.
       - name: Run Patrol web E2E
         working-directory: flutter/apps/wondermove_web
+        env:
+          LANG: en_US.UTF-8
+          LANGUAGE: en_US:en
+          LC_ALL: en_US.UTF-8
         run: |
           sed -i 's#<base href="/new/">#<base href="/">#' web/index.html
           flutter pub get
@@ -130,7 +137,7 @@ jobs:
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
             --web-headless true --web-server-timeout 600 \
-            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader"]'
+            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]'
 
       - name: Upload Patrol report
         if: always()
