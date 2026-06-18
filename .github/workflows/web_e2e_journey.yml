@@ -76,9 +76,8 @@ jobs:
             kratos backend mock-server nginx functional-test
 
       # bin/ is gitignored in the monorepo (so bin/wait-for-backend.sh is absent
-      # on CI and the volume mount hides any baked-in copy). Inline the same
-      # poll, and seed via the tracked tool/seed_journey.dart.
-      - name: Wait for backend & seed journey prerequisites
+      # on CI and the volume mount hides any baked-in copy). Inline the same poll.
+      - name: Wait for backend
         run: |
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test sh -c '
             URL="http://backend:3000/api/transporter"
@@ -90,8 +89,16 @@ jobs:
             done
             echo "Backend did not become ready in time"; exit 1
           '
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "cd /app/functional-test && dart pub get && dart run tool/seed_journey.dart"
+
+      # seed_journey.dart finishes its work but the Dart VM does not always exit
+      # (a lingering client keeps the event loop alive), so the process hangs.
+      # Cap the run and gate on the completion marker rather than process exit.
+      - name: Seed journey prerequisites
+        run: |
+          timeout 420 docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
+            sh -c "cd /app/functional-test && dart pub get && dart run tool/seed_journey.dart" \
+            | tee /tmp/seed.log || true
+          grep -q "master data ready" /tmp/seed.log
 
       - name: GATE — offline HDFC mock system test
         run: |
