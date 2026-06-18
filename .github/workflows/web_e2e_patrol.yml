@@ -92,14 +92,26 @@ jobs:
             echo "Backend did not become ready in time"; exit 1
           '
 
-      # seed_journey.dart finishes its work but the Dart VM does not always exit
-      # (a lingering client keeps the event loop alive), so the process hangs.
-      # Cap the run and gate on the completion marker rather than process exit.
+      # seed_journey.dart commits all its work, prints the completion marker, then
+      # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
+      # Stream it, proceed the instant the marker appears, then kill the leftover
+      # process. No fixed idle wait; the step's verdict is the marker.
       - name: Seed master tenant
         run: |
-          timeout 420 docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test \
+          set +e
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test \
             sh -c "cd /app/functional-test && dart pub get && dart run tool/seed_journey.dart" \
-            | tee /tmp/seed.log || true
+            > /tmp/seed.log 2>&1 &
+          EXEC_PID=$!
+          for i in $(seq 1 120); do
+            grep -q "master data ready" /tmp/seed.log && break
+            kill -0 "$EXEC_PID" 2>/dev/null || break
+            sleep 2
+          done
+          cat /tmp/seed.log
+          kill "$EXEC_PID" 2>/dev/null
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test \
+            sh -c "pkill -f seed_journey || true" >/dev/null 2>&1
           grep -q "master data ready" /tmp/seed.log
 
       - name: Install Playwright Chromium
