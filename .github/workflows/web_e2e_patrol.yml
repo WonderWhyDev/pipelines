@@ -114,8 +114,10 @@ jobs:
             sh -c "pkill -f seed_journey || true" >/dev/null 2>&1
           grep -q "master data ready" /tmp/seed.log
 
-      - name: Install Playwright Chromium
-        run: npx --yes playwright install --with-deps chromium
+      # Pin to the Playwright version patrol's web_runner bundles (patrol 4.6.1 ->
+      # playwright 1.56.0) so patrol's own `npx playwright install` is a cached no-op.
+      - name: Install Playwright Chromium (match patrol web_runner)
+        run: npx --yes playwright@1.56.0 install --with-deps chromium
 
       - name: Run Patrol web E2E
         working-directory: flutter/apps/wondermove_web

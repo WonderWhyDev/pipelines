@@ -117,8 +117,11 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
             sh -c "cd /app/functional-test && dart test test/mock/"
 
-      - name: Install Playwright Chromium
-        run: npx --yes playwright install --with-deps chromium
+      # Pin to the Playwright version patrol's web_runner bundles (patrol 4.6.1 ->
+      # playwright 1.56.0). Installing the matching browser + system deps here makes
+      # patrol's own `npx playwright install` a cached no-op instead of failing.
+      - name: Install Playwright Chromium (match patrol web_runner)
+        run: npx --yes playwright@1.56.0 install --with-deps chromium
 
       # Non-blocking: step 4 (payout UI) awaits a seeded driver-advance payable.
       # Steps 1-3 (login, HDFC secret via UI, OCR upload via UI) are the unique
@@ -135,7 +138,8 @@ jobs:
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
             --web-headless true --web-server-timeout 600 \
-            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader"]'
+            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader"]' \
+            --verbose
 
       - name: Upload Patrol report
         if: always()
