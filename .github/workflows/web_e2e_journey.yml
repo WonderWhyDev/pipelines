@@ -11,11 +11,10 @@
 #   1. GATE (hard pass/fail): `dart test test/mock/` — the HDFC payout through
 #      the real backend adapter -> mock -> CBX reference (mTLS + JOSE). This is
 #      the proven offline-integration proof.
-#   2. Patrol UI journey (non-blocking): login -> set HDFC secret via UI ->
-#      OCR-upload via UI -> HDFC payout via UI. Steps 1-3 are proven; step 4
-#      (payout UI) needs a seeded driver-advance payable that seed_journey.dart
-#      does not create yet, so the Patrol step is continue-on-error. The payout
-#      PATH it exercises is already gated green by step 1.
+#   2. Patrol UI journey (blocking): login -> set HDFC secret via UI ->
+#      OCR-upload via UI -> HDFC payout via UI. All four steps are seeded and
+#      exercised end to end (seed_journey.dart now seeds the driver-advance
+#      payable + beneficiary bank account for the payout step).
 
 name: Web E2E Journey (offline mock)
 
@@ -123,14 +122,13 @@ jobs:
       - name: Install Playwright Chromium (match patrol web_runner)
         run: npx --yes playwright@1.56.0 install --with-deps chromium
 
-      # Non-blocking: step 4 (payout UI) awaits a seeded driver-advance payable.
-      # Steps 1-3 (login, HDFC secret via UI, OCR upload via UI) are the unique
-      # UI coverage here; the payout path itself is gated green above.
+      # Blocking: the full journey (login, HDFC secret via UI, OCR upload via UI,
+      # HDFC payout via UI) is seeded and driven end to end. The payout step's
+      # payable + beneficiary are seeded by seed_journey.dart.
       # --lang=en-US: headless chromium otherwise exposes an empty/malformed
       # navigator.languages, and Flutter's engine init throws "Incorrect locale
       # information provided" (parseBrowserLanguages) before any test can run.
-      - name: Patrol driver-advance journey (UI, non-blocking)
-        continue-on-error: true
+      - name: Patrol driver-advance journey (UI)
         working-directory: flutter/apps/wondermove_web
         env:
           LANG: en_US.UTF-8

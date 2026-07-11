@@ -1,12 +1,14 @@
-# Patrol web E2E — runs the wondermove_web app against the real backend stack
-# THROUGH nginx, exactly like production's request path. Mirrors the recipe
-# proven locally; on ubuntu-latest (linux/amd64) the Rosetta problems that bite
-# on Apple Silicon (adb crash, slow DDC compile) do not occur.
+# UAT smoke test — logs in as the seeded master admin through nginx, exactly
+# like production's request path, to catch a broken login/boot before it ever
+# reaches a real environment. Not a feature test: just "does the app come up
+# and can someone get past the login screen." Mirrors the recipe proven
+# locally; on ubuntu-latest (linux/amd64) the Rosetta problems that bite on
+# Apple Silicon (adb crash, slow DDC compile) do not occur.
 #
 # Topology: the backend stack runs in docker (nginx published on :80); Patrol
 # runs natively on the runner and serves the instrumented app on :3005. The app
 # resolves its API from Uri.base.host (port 80) -> nginx -> backend/kratos, so
-# /auth + /api flow through nginx. The smoke variant only swaps nginx's upstream.
+# /auth + /api flow through nginx.
 #
 # Requires two app changes that ship with this (already in the repo):
 #   - auth_interceptor sends withCredentials so the Ory cookie reaches /api
@@ -20,7 +22,7 @@
 # placeholder in web/index.html and pass --base-href=/new/ in the prod build so
 # this sed is unnecessary.
 
-name: Web E2E (Patrol)
+name: Web UAT Smoke Test
 
 on:
   workflow_dispatch:
@@ -122,7 +124,7 @@ jobs:
       # --lang=en-US: headless chromium otherwise exposes an empty/malformed
       # navigator.languages, and Flutter's engine init throws "Incorrect locale
       # information provided" (parseBrowserLanguages) before any test can run.
-      - name: Run Patrol web E2E
+      - name: Run UAT smoke test
         working-directory: flutter/apps/wondermove_web
         env:
           LANG: en_US.UTF-8
