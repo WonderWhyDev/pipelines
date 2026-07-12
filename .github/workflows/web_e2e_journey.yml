@@ -101,7 +101,7 @@ jobs:
             > /tmp/seed.log 2>&1 &
           EXEC_PID=$!
           for i in $(seq 1 120); do
-            grep -q "master data ready" /tmp/seed.log && break
+            grep -q "seed-journey] done" /tmp/seed.log && break
             kill -0 "$EXEC_PID" 2>/dev/null || break
             sleep 2
           done
@@ -109,7 +109,7 @@ jobs:
           kill "$EXEC_PID" 2>/dev/null
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
             sh -c "pkill -f seed_journey || true" >/dev/null 2>&1
-          grep -q "master data ready" /tmp/seed.log
+          grep -q "seed-journey] done" /tmp/seed.log
 
       - name: GATE — offline HDFC mock system test
         run: |
