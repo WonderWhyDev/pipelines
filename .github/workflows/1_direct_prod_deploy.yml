@@ -1,0 +1,159 @@
+name: "0_Backend_Pipeline"
+run-name: Backend_Pipeline_-_${{ inputs.branch || 'main' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'wonderWhy branch to build/test/deploy'
+        required: true
+        type: string
+        default: main
+
+jobs:
+  find_latest_version:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_version: ${{ steps.get_version.outputs.latest_version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.branch }}
+          fetch-depth: 1
+          sparse-checkout: '.gitignore'
+          sparse-checkout-cone-mode: false
+      - id: get_version
+        run: |
+          latest_version=$(git log -1 --format=%H)
+          echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
+          echo "Resolved ${{ inputs.branch }} to $latest_version"
+
+  lint:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.11.1'
+          cache: 'yarn'
+          cache-dependency-path: wonderWhy/yarn.lock
+      - working-directory: wonderWhy
+        run: |
+          yarn install
+          yarn b format
+          yarn b lint
+          yarn b build
+          yarn b checkVersion
+
+
+
+  deploy_prod:
+    runs-on: ubuntu-latest
+    needs: [find_latest_version]
+    environment: magnum
+    steps:
+      - name: Check out pipelines repo for actions
+        uses: actions/checkout@v5
+
+      - name: Check out wonderWhy
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.11.1'
+          cache: 'yarn'
+          cache-dependency-path: 'wonderWhy/yarn.lock'
+
+      - working-directory: wonderWhy
+        run: |
+          yarn install --force
+          yarn b build
+
+      - uses: ./.github/actions/upload_version_file
+        with:
+          version: ${{ needs.find_latest_version.outputs.latest_version }}
+          env: prod
+
+      - name: Stage backend payload
+        run: |
+          mkdir backend
+          cp -r wonderWhy/backend/prisma backend/
+          cp -rf wonderWhy/backend/assets backend/
+          cp -rf wonderWhy/backend/prisma/migrations backend/prisma/schema/
+          cp wonderWhy/backend/dist/app.js backend/
+          cp -rf wonderWhy/backend/externalPackages backend/
+          cp wonderWhy/backend/package.json backend/
+          cp wonderWhy/backend/prisma.config.ts backend/
+          cp wonderWhy/backend/deploy/* backend/
+
+      - name: Decode ICICI .p12 and zip backend
+        run: |
+          echo "${{ secrets.ICICI_KEYSTORE_BASE64 }}" | base64 --decode \
+            > backend/externalPackages/icici/node-composite-sv-build/composite_node_sdk_uat/config/iciciKey.p12
+          zip -r backend.zip backend
+
+      - uses: ./.github/actions/copy_to_ec2
+        with:
+          ec2IP: ${{ secrets.EC2_IP }}
+          awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY }}
+          awsSecretKey: ${{ secrets.AWS_SECRET_KEY }}
+          awsRegion: ${{ secrets.AWS_REGION }}
+          ec2User: ${{ secrets.EC2_USER }}
+          securityGroupId: ${{ secrets.SECURITY_GROUP_ID }}
+          sshKey: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
+          fileToCopy: ./backend.zip
+          destination: ~/backend.zip
+          runScript: |
+            set -e
+            ACTIVE=$(cat ~/.active_backend_color 2>/dev/null || echo blue)
+            case "$ACTIVE" in
+              blue)  INACTIVE=green ;;
+              green) INACTIVE=blue ;;
+              *) echo "invalid active color: $ACTIVE"; exit 1 ;;
+            esac
+            echo "active=$ACTIVE; deploying to $INACTIVE"
+            mkdir -p ~/wonderwhy_backend
+            rm -rf /tmp/backend_unzip
+            mkdir -p /tmp/backend_unzip
+            unzip -o ~/backend.zip -d /tmp/backend_unzip
+            sudo rm -rf ~/wonderwhy_backend/$INACTIVE
+            mkdir -p ~/wonderwhy_backend/$INACTIVE
+            cp -rf /tmp/backend_unzip/backend/. ~/wonderwhy_backend/$INACTIVE/
+            rm -rf /tmp/backend_unzip
+            cp ~/wonderwhy_backend/$INACTIVE/compose.yml ~/wonderwhy_backend/compose.yml
+            cp ~/wonderwhy_backend/$INACTIVE/flip.sh    ~/wonderwhy_backend/flip.sh
+            cp ~/wonderwhy_backend/$INACTIVE/deploy.sh  ~/wonderwhy_backend/deploy.sh
+            chmod +x ~/wonderwhy_backend/flip.sh ~/wonderwhy_backend/deploy.sh
+            sudo chown -R ec2-user:ec2-user ~/wonderwhy_backend
+            cd ~/wonderwhy_backend
+            sh ./deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} \
+              ${{ secrets.ZITADEL_PAT }} \
+              "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" \
+              ${{ secrets.GEN_AI_GOOGLE_API }} \
+              ${{ secrets.WHATSAPP_VERIFY_TOKEN }} \
+              ${{ secrets.WHATSAPP_ACCESS_TOKEN }} \
+              ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }} \
+              ${{ secrets.WHATSAPP_FUEL_FLOW_ID }} \
+              ${{ secrets.WHATSAPP_SHORTAGE_FLOW_ID }} \
+              ${{ secrets.WHATSAPP_LR_FLOW_ID }} \
+              ${{ secrets.COMPOSITE_KEYSTORE_PATH }} \
+              ${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }} \
+              ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
+              ${{ secrets.COMPOSITE_API_KEY }} \
+              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} \
+              ${{ secrets.ENV_TYPE }}
