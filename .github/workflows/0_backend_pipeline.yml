@@ -53,6 +53,14 @@ jobs:
           yarn b lint
           yarn b build
           yarn b checkVersion
+      # Separate step, not folded into `yarn b lint`: that lint sits exactly on its
+      # --max-warnings budget, so a new rule there would fail the budget instead of
+      # reporting N+1s. This carries its own budget, which grandfathers the N+1s already
+      # in the tree and fails only on a new one. Runs after build so a red build reports
+      # first; ~30s.
+      - name: N+1 lint
+        working-directory: wonderWhy
+        run: yarn b lint:n-plus-one
 
   unit_test:
     needs: find_latest_version
