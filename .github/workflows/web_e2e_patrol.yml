@@ -60,7 +60,10 @@ jobs:
           node-version: "22"
 
       - name: Activate Patrol CLI
-        run: dart pub global activate patrol_cli
+        # Pin to the CLI that matches the app's patrol package (4.6.1). The latest
+        # published patrol_cli (4.5.0) added a strict check that rejects patrol
+        # 4.6.1, and no 4.6.x CLI exists yet; 4.4.0 is the version that runs it.
+        run: dart pub global activate patrol_cli 4.4.0
 
       # functional-test image is private on GHCR; the rest are public.
       - name: Login to GHCR
