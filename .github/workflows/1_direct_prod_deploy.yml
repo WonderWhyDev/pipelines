@@ -1,4 +1,4 @@
-name: "0_Backend_Pipeline"
+name: "1_Direct_Prod_Pipeline"
 run-name: Backend_Pipeline_-_${{ inputs.branch || 'main' }}
 
 on:
