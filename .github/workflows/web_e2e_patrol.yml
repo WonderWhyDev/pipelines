@@ -75,6 +75,11 @@ jobs:
           docker compose -f compose.yml -f compose.local.yml -p wonderwhy up -d --wait db localstack mailpit
           docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T localstack \
             awslocal sqs create-queue --queue-name margin
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting_dlq.fifo --attributes FifoQueue=true
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting.fifo \
+            --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
           docker compose -f compose.yml -f compose.local.yml -p wonderwhy up -d kratos backend nginx functional-test
 
       # bin/ is gitignored in the monorepo (bin/wait-for-backend.sh + bin/seed.dart

@@ -161,6 +161,11 @@ jobs:
         run: |
           docker compose -p ci up -d --wait localstack
           docker compose -p ci exec -T localstack awslocal sqs create-queue --queue-name margin
+          docker compose -p ci exec -T localstack awslocal sqs create-queue \
+            --queue-name gl_posting_dlq.fifo --attributes FifoQueue=true
+          docker compose -p ci exec -T localstack awslocal sqs create-queue \
+            --queue-name gl_posting.fifo \
+            --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
 
       - name: Bring up backend, kratos, functional-test
         working-directory: wonderWhy

@@ -70,6 +70,11 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
             awslocal sqs create-queue --queue-name margin
           docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting_dlq.fifo --attributes FifoQueue=true
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting.fifo \
+            --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
             awslocal s3 mb s3://localbucket
           docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
             kratos backend mock-server nginx functional-test
