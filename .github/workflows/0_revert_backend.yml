@@ -50,11 +50,14 @@ jobs:
         run: |
           ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} << 'EOF'
           set -e
-          ACTIVE=$(cat ~/.active_backend_color)
+          ACTIVE=$(grep -E "^[[:space:]]*server backend_(blue|green):8000" ~/nginx/conf/upstream-backend.conf 2>/dev/null | grep -v "down;" | grep -oE "backend_(blue|green)" | head -1 | sed "s/backend_//")
+          [ -n "$ACTIVE" ] || ACTIVE=$(grep -E "^[[:space:]]*server backend_(blue|green):8000" ~/nginx/nginx.conf 2>/dev/null | grep -v "down;" | grep -oE "backend_(blue|green)" | head -1 | sed "s/backend_//")
+          if [ -z "$ACTIVE" ]; then
+            echo "Error: cannot determine live backend colour from nginx state"; exit 1
+          fi
           case "$ACTIVE" in
             blue)  INACTIVE=green ;;
             green) INACTIVE=blue ;;
-            *) echo "invalid active color: $ACTIVE"; exit 1 ;;
           esac
           if ! docker ps --format '{{.Names}}' | grep -q "^backend_${INACTIVE}$"; then
             echo "Error: backend_${INACTIVE} container is not running; nothing to revert to"

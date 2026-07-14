@@ -296,11 +296,12 @@ jobs:
           destination: ~/backend.zip
           runScript: |
             set -e
-            ACTIVE=$(cat ~/.active_backend_color 2>/dev/null || echo blue)
+            ACTIVE=$(grep -E "^[[:space:]]*server backend_(blue|green):8000" ~/nginx/conf/upstream-backend.conf 2>/dev/null | grep -v "down;" | grep -oE "backend_(blue|green)" | head -1 | sed "s/backend_//")
+            [ -n "$ACTIVE" ] || ACTIVE=$(grep -E "^[[:space:]]*server backend_(blue|green):8000" ~/nginx/nginx.conf 2>/dev/null | grep -v "down;" | grep -oE "backend_(blue|green)" | head -1 | sed "s/backend_//")
+            [ -n "$ACTIVE" ] || ACTIVE=blue
             case "$ACTIVE" in
               blue)  INACTIVE=green ;;
               green) INACTIVE=blue ;;
-              *) echo "invalid active color: $ACTIVE"; exit 1 ;;
             esac
             echo "active=$ACTIVE; deploying to $INACTIVE"
             mkdir -p ~/wonderwhy_backend
@@ -398,11 +399,12 @@ jobs:
           destination: ~/backend.zip
           runScript: |
             set -e
-            ACTIVE=$(cat ~/.active_backend_color 2>/dev/null || echo blue)
+            ACTIVE=$(grep -E "^[[:space:]]*server backend_(blue|green):8000" ~/nginx/conf/upstream-backend.conf 2>/dev/null | grep -v "down;" | grep -oE "backend_(blue|green)" | head -1 | sed "s/backend_//")
+            [ -n "$ACTIVE" ] || ACTIVE=$(grep -E "^[[:space:]]*server backend_(blue|green):8000" ~/nginx/nginx.conf 2>/dev/null | grep -v "down;" | grep -oE "backend_(blue|green)" | head -1 | sed "s/backend_//")
+            [ -n "$ACTIVE" ] || ACTIVE=blue
             case "$ACTIVE" in
               blue)  INACTIVE=green ;;
               green) INACTIVE=blue ;;
-              *) echo "invalid active color: $ACTIVE"; exit 1 ;;
             esac
             echo "active=$ACTIVE; deploying to $INACTIVE"
             mkdir -p ~/wonderwhy_backend
