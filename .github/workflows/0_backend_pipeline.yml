@@ -61,6 +61,12 @@ jobs:
       - name: N+1 lint
         working-directory: wonderWhy
         run: yarn b lint:n-plus-one
+      # Same shape as the N+1 step, and separate for the same reason: its own --max-warnings
+      # budget grandfathers the endpoints that already take an id list in the URL and fails only
+      # when a new one is added.
+      - name: ID-list-in-URL lint
+        working-directory: wonderWhy
+        run: yarn b lint:id-list-query
 
   unit_test:
     needs: find_latest_version
