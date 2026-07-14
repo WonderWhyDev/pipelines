@@ -50,8 +50,11 @@ jobs:
         run: |
           ssh -i SSH_PRIVATE_KEY_FOR_EC2.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} << 'EOF'
           set -e
-          ACTIVE=$(grep -E "^[[:space:]]*server backend_(blue|green):8000" ~/nginx/conf/upstream-backend.conf 2>/dev/null | grep -v "down;" | grep -oE "backend_(blue|green)" | head -1 | sed "s/backend_//")
-          [ -n "$ACTIVE" ] || ACTIVE=$(grep -E "^[[:space:]]*server backend_(blue|green):8000" ~/nginx/nginx.conf 2>/dev/null | grep -v "down;" | grep -oE "backend_(blue|green)" | head -1 | sed "s/backend_//")
+          if grep -q "include /usr/share/nginx/conf/upstream-backend.conf" ~/nginx/nginx.conf 2>/dev/null; then
+            ACTIVE=$(grep -E "^[[:space:]]*server backend_(blue|green):8000" ~/nginx/conf/upstream-backend.conf 2>/dev/null | grep -v "down;" | grep -oE "backend_(blue|green)" | head -1 | sed "s/backend_//")
+          else
+            ACTIVE=$(grep -E "^[[:space:]]*server backend_(blue|green):8000" ~/nginx/nginx.conf 2>/dev/null | grep -v "down;" | grep -oE "backend_(blue|green)" | head -1 | sed "s/backend_//")
+          fi
           if [ -z "$ACTIVE" ]; then
             echo "Error: cannot determine live backend colour from nginx state"; exit 1
           fi
