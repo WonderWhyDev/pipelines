@@ -1,0 +1,58 @@
+name: "0_Store_Versions"
+run-name: Store_Versions_-_latest_${{ inputs.limit || '4' }}
+
+# Read-only report of what is actually on Play / the App Store: which versions are
+# published, which are still in review, and the few before them. Use it to decide
+# minVersion in nginx/appVersion/version.json before running 0_Deploy_Nginx.
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'wonderWhy branch to take the script from'
+        required: true
+        type: string
+        default: main
+      limit:
+        description: 'How many versions to list per platform'
+        required: true
+        type: string
+        default: '4'
+
+jobs:
+  store_versions:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: magnum
+
+    steps:
+      - name: Check out wonderwhy folder
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          ref: ${{ inputs.branch || 'main' }}
+          sparse-checkout: automation/storeVersions
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: wonderWhy/automation/storeVersions/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r wonderWhy/automation/storeVersions/requirements.txt
+
+      - name: List store versions
+        env:
+          GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          LIMIT: ${{ inputs.limit || '4' }}
+        run: python wonderWhy/automation/storeVersions/list_store_versions.py
