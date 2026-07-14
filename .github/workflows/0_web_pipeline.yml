@@ -220,6 +220,19 @@ jobs:
           lcov "${ADD[@]}" -o coverage/lcov.info --ignore-errors inconsistent
           bash coverage.sh --gate-only
 
+  # Hard gate on the road to prod: the full driver-advance journey (real UI, real
+  # backend, offline OCR/HDFC mocks) on the exact commit being promoted. Hangs off
+  # lint so it runs beside the unit tests, the coverage gate and the QA deploy
+  # rather than after them.
+  e2e_journey:
+    needs: [find_latest_version, lint]
+    uses: ./.github/workflows/web_e2e_journey.yml
+    with:
+      ref: ${{ needs.find_latest_version.outputs.latest_version }}
+    secrets:
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      GHRC_SECRET_KEY: ${{ secrets.GHRC_SECRET_KEY }}
+
   deploy_qa:
     needs: [find_latest_version, lint, unit_test, coverage_wondermove]
     uses: ./.github/workflows/x_deploy_base_web.yml
@@ -240,7 +253,7 @@ jobs:
       OAUTH_MOBILE_APP_CLIENT_ID: ${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}
 
   deploy_prod:
-    needs: [find_latest_version, deploy_qa]
+    needs: [find_latest_version, deploy_qa, e2e_journey]
     uses: ./.github/workflows/x_deploy_base_web.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}

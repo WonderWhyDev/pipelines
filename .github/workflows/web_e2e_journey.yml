@@ -18,14 +18,28 @@
 
 name: Web E2E Journey (offline mock)
 
+# Callable as a gate from 0_backend_pipeline.yml / 0_web_pipeline.yml (which pass the
+# resolved SHA so the journey validates the exact commit being promoted), and still
+# runnable by hand (type a branch name).
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: "wonderWhy branch to test"
+      ref:
+        description: "wonderWhy branch or SHA to test"
         required: false
         type: string
         default: main
+  workflow_call:
+    inputs:
+      ref:
+        description: "wonderWhy branch or SHA to test"
+        required: true
+        type: string
+    secrets:
+      REPO_READ_TOKEN:
+        required: true
+      GHRC_SECRET_KEY:
+        required: true
 
 jobs:
   journey:
@@ -40,7 +54,7 @@ jobs:
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_READ_TOKEN }}
-          ref: ${{ inputs.branch || 'main' }}
+          ref: ${{ inputs.ref || 'main' }}
           fetch-depth: 1
 
       - uses: subosito/flutter-action@v2
