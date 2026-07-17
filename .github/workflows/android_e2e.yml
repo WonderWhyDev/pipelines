@@ -1,0 +1,225 @@
+# Android E2E — the driver and operations journeys, on a real emulator, against
+# OFFLINE mocks.
+#
+# The mobile twin of web_e2e_journey.yml. Same stack, same seed style, same
+# marker-poll; the difference is entirely in how the app under test reaches it.
+#
+# Topology: the backend stack runs in docker with nginx published on :80. The
+# emulator runs on the same runner and reaches it through
+# `adb reverse tcp:8080 tcp:80`, which opens a listener on the EMULATOR's
+# loopback and forwards to the runner's nginx. So the app talks to
+# http://localhost:8080 -> nginx -> backend/kratos — the same request path prod
+# uses, and the same one the web journey exercises.
+#   - 8080 on the device, not 80: adb reverse opens that socket with adbd's own
+#     privileges, and a privileged port would need adbd running as root.
+#   - localhost, not 10.0.2.2: 10.0.2.2 reaches the host too, but through the
+#     emulator's NAT alias, which no real build ever uses.
+#
+# Two app-side prerequisites ship with this in the monorepo:
+#   - environment_config.dart has an ENV=e2e case pointing at
+#     http://localhost:8080 (ENV=local points at :3000/:4433 directly, which are
+#     NOT published, and mean "the emulator itself" anyway).
+#   - the DEBUG AndroidManifest allows cleartext, since API 28+ blocks plain
+#     http and the whole harness is http. Release is untouched.
+#
+# External providers (OCR, SurePass) are mocked by compose.mock.yml exactly as in
+# the web journey — the backend calls them server-side, so the emulator needs no
+# knowledge of them.
+
+name: Android E2E (driver + operations)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "wonderWhy branch or SHA to test"
+        required: false
+        type: string
+        default: main
+  workflow_call:
+    inputs:
+      ref:
+        description: "wonderWhy branch or SHA to test"
+        required: true
+        type: string
+    secrets:
+      REPO_READ_TOKEN:
+        required: true
+      GHRC_SECRET_KEY:
+        required: true
+
+jobs:
+  android-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      COMPOSE_FILES: "-f compose.yml -f compose.local.yml -f compose.mock.yml"
+      PROJECT: androide2e
+      FLUTTER_ROOT_DIR: flutter
+    steps:
+      - name: Checkout wonderWhy (code + compose live here)
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.ref || 'main' }}
+          fetch-depth: 1
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.0"
+          channel: stable
+          cache: true
+
+      # patrol_cli warns on anything but Java 17/21 for Android, and the app
+      # already compiles at 17.
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-androide2e-${{ hashFiles('flutter/apps/wondermove_mobile/android/**/*.gradle*', 'flutter/apps/wondermove_mobile/android/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-androide2e-
+
+      # wondermove_mobile depends on the in-repo path packages (auth_core,
+      # auth_flutter, api_client) via pubspec_overrides.yaml, so the melos
+      # workspace has to be bootstrapped before it can resolve — same as
+      # x_deploy_base_mobile_android.yml.
+      - name: Bootstrap melos workspace
+        run: |
+          cd $FLUTTER_ROOT_DIR
+          dart pub get
+          dart run melos bootstrap
+
+      - name: Activate Patrol CLI
+        # Pinned to match the app's patrol package (4.6.1); the CLI validates the
+        # package version against a table it ships. Bump both together.
+        run: dart pub global activate patrol_cli 4.4.0
+
+      # functional-test image is private on GHCR; the rest are public.
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHRC_SECRET_KEY }}
+
+      - name: Bring up offline-mock stack
+        run: |
+          docker compose $COMPOSE_FILES -p $PROJECT up -d --wait db localstack mailpit
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name margin
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting_dlq.fifo --attributes FifoQueue=true
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting.fifo \
+            --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal s3 mb s3://localbucket
+          docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
+            kratos backend mock-server nginx functional-test
+
+      # bin/ is gitignored in the monorepo (so bin/wait-for-backend.sh is absent
+      # on CI and the volume mount hides any baked-in copy). Inline the same poll.
+      - name: Wait for backend
+        run: |
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test sh -c '
+            URL="http://backend:3000/api/transporter"
+            echo "Waiting for backend at $URL ..."
+            for i in $(seq 1 90); do
+              code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo 000)
+              case "$code" in 200|401) echo "Backend ready (HTTP $code)"; exit 0;; esac
+              echo "Try $i: backend not ready (HTTP $code)"; sleep 5
+            done
+            echo "Backend did not become ready in time"; exit 1
+          '
+
+      # Same pattern as the web journey's seed step: the Dart VM does not exit
+      # after the seed commits (a lingering client keeps the loop alive), so
+      # stream it, proceed the instant the marker appears, then kill the
+      # leftover. The marker — not the exit code — is the step's verdict.
+      - name: Seed driver + operations base data
+        run: |
+          set +e
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
+            sh -c "cd /app/functional-test && dart pub get && dart run tool/seed_mobile.dart" \
+            > /tmp/seed.log 2>&1 &
+          EXEC_PID=$!
+          for i in $(seq 1 120); do
+            grep -q "seed-mobile] done" /tmp/seed.log && break
+            kill -0 "$EXEC_PID" 2>/dev/null || break
+            sleep 2
+          done
+          cat /tmp/seed.log
+          kill "$EXEC_PID" 2>/dev/null
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
+            sh -c "pkill -f seed_mobile || true" >/dev/null 2>&1
+          grep -q "seed-mobile] done" /tmp/seed.log
+
+      # The emulator needs KVM, which is present on ubuntu-latest but not
+      # world-accessible by default.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Both targets run in one emulator boot (boot is the expensive part).
+      # clearPackageData=true + the orchestrator wipe the app between them, so
+      # each starts logged out — which is why the driver test does not have to
+      # undo the ops test's session.
+      - name: Run Patrol journeys on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          ram-size: 4096M
+          disable-animations: true
+          # -timezone UTC is load-bearing, not hygiene. The operations dashboard
+          # derives its default "yesterday" range from the DEVICE's local date,
+          # while seed_mobile.dart dates the trip from the container's (UTC)
+          # date. If the two disagree on what "yesterday" is, the range misses
+          # the seeded trip by a whole day and the ops test fails on an empty
+          # panel. Runners are UTC today, so this only pins what is already true.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -timezone UTC
+          working-directory: flutter/apps/wondermove_mobile
+          script: |
+            # Point the emulator's :8080 at the runner's nginx (:80). Must happen
+            # after boot, and it does not survive an emulator restart.
+            adb reverse tcp:8080 tcp:80
+            # Diagnostic only (best-effort: curl may be absent on some images).
+            # Prints 200/401 when nginx answered; a 000 in the log is the first
+            # thing to look at if every test then fails at login.
+            adb shell 'curl -s -o /dev/null -w "nginx from emulator: %{http_code}\n" http://localhost:8080/api/transporter' || true
+            PATROL_ANALYTICS_ENABLED=false patrol test \
+              --target patrol_test/journey/driver_test.dart \
+              --target patrol_test/journey/operations_test.dart \
+              --dart-define=ENV=e2e \
+              --verbose
+
+      - name: Upload Patrol report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e-report
+          path: |
+            flutter/apps/wondermove_mobile/build/app/reports
+            flutter/apps/wondermove_mobile/build/app/outputs/androidTest-results
+          if-no-files-found: ignore
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          docker compose $COMPOSE_FILES -p $PROJECT logs --tail 300 \
+            backend mock-server nginx kratos || true
