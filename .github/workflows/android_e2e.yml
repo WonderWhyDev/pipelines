@@ -194,19 +194,22 @@ jobs:
           # panel. Runners are UTC today, so this only pins what is already true.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -timezone UTC
           working-directory: flutter/apps/wondermove_mobile
+          # KEEP THE PATROL COMMAND ON ONE LINE. This action runs `script:` one
+          # line per `sh -c`, so a backslash line-continuation does NOT continue:
+          # the first line runs alone and every following flag is silently
+          # dropped. That is not cosmetic. `patrol test` with no flags still
+          # discovers both tests (via pubspec's test_directory) and runs them,
+          # so it looks like a real run — but without --dart-define=ENV=e2e the
+          # app falls back to ENV=test and logs in against the REAL
+          # test1.wondermove.in, which fails as "credentials are invalid".
+          #
+          # startApp() now also asserts ENV=e2e in-app, so if the defines are
+          # ever lost again the suite fails immediately, naming the URL it was
+          # about to talk to, instead of quietly hitting a live environment.
           script: |
-            # Point the emulator's :8080 at the runner's nginx (:80). Must happen
-            # after boot, and it does not survive an emulator restart.
             adb reverse tcp:8080 tcp:80
-            # Diagnostic only (best-effort: curl may be absent on some images).
-            # Prints 200/401 when nginx answered; a 000 in the log is the first
-            # thing to look at if every test then fails at login.
             adb shell 'curl -s -o /dev/null -w "nginx from emulator: %{http_code}\n" http://localhost:8080/api/transporter' || true
-            PATROL_ANALYTICS_ENABLED=false patrol test \
-              --target patrol_test/journey/driver_test.dart \
-              --target patrol_test/journey/operations_test.dart \
-              --dart-define=ENV=e2e \
-              --verbose
+            PATROL_ANALYTICS_ENABLED=false patrol test --target patrol_test/journey/driver_test.dart --target patrol_test/journey/operations_test.dart --dart-define=ENV=e2e --verbose
 
       - name: Upload Patrol report
         if: always()
@@ -218,8 +221,12 @@ jobs:
             flutter/apps/wondermove_mobile/build/app/outputs/androidTest-results
           if-no-files-found: ignore
 
+      # --since 10m, not --tail: the emulator build+run takes ~10 minutes, so a
+      # fixed tail is all seed-time noise and cuts off exactly the window the
+      # tests ran in. Kratos logging NOTHING here is itself the signal that the
+      # app never reached the local stack.
       - name: Dump container logs on failure
         if: failure()
         run: |
-          docker compose $COMPOSE_FILES -p $PROJECT logs --tail 300 \
+          docker compose $COMPOSE_FILES -p $PROJECT logs --since 10m \
             backend mock-server nginx kratos || true
