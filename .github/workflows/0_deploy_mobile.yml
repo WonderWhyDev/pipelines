@@ -1,55 +1,128 @@
-# Android E2E — the driver and operations journeys, on a real emulator, against
-# OFFLINE mocks.
-#
-# The mobile twin of web_e2e_journey.yml. Same stack, same seed style, same
-# marker-poll; the difference is entirely in how the app under test reaches it.
-#
-# Topology: the backend stack runs in docker with nginx published on :80. The
-# emulator runs on the same runner and reaches it through
-# `adb reverse tcp:8080 tcp:80`, which opens a listener on the EMULATOR's
-# loopback and forwards to the runner's nginx. So the app talks to
-# http://localhost:8080 -> nginx -> backend/kratos — the same request path prod
-# uses, and the same one the web journey exercises.
-#   - 8080 on the device, not 80: adb reverse opens that socket with adbd's own
-#     privileges, and a privileged port would need adbd running as root.
-#   - localhost, not 10.0.2.2: 10.0.2.2 reaches the host too, but through the
-#     emulator's NAT alias, which no real build ever uses.
-#
-# Two app-side prerequisites ship with this in the monorepo:
-#   - environment_config.dart has an ENV=e2e case pointing at
-#     http://localhost:8080 (ENV=local points at :3000/:4433 directly, which are
-#     NOT published, and mean "the emulator itself" anyway).
-#   - the DEBUG AndroidManifest allows cleartext, since API 28+ blocks plain
-#     http and the whole harness is http. Release is untouched.
-#
-# External providers (OCR, SurePass) are mocked by compose.mock.yml exactly as in
-# the web journey — the backend calls them server-side, so the emulator needs no
-# knowledge of them.
-
-name: Android E2E (driver + operations)
+name: "0_Deploy_Mobile"
+run-name: Deploy_Mobile_-_${{ inputs.branch || 'main' }}
 
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: "wonderWhy branch or SHA to test"
-        required: false
+      branch:
+        description: 'wonderWhy branch to build/test/deploy'
+        required: true
         type: string
         default: main
-  workflow_call:
-    inputs:
-      ref:
-        description: "wonderWhy branch or SHA to test"
-        required: true
-        type: string
-    secrets:
-      REPO_READ_TOKEN:
-        required: true
-      GHRC_SECRET_KEY:
-        required: true
 
 jobs:
-  android-e2e:
+  find_latest_version:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_version: ${{ steps.get_version.outputs.latest_version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.branch || 'main' }}
+          fetch-depth: 1
+          sparse-checkout: '.gitignore'
+          sparse-checkout-cone-mode: false
+      - id: get_version
+        run: |
+          latest_version=$(git log -1 --format=%H)
+          echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
+          echo "Resolved ${{ inputs.branch || 'main' }} to $latest_version"
+
+  lint:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.0
+
+      - name: Bootstrap melos workspace
+        run: |
+          cd flutter
+          dart pub get
+          dart run melos bootstrap
+
+      - name: Check formatting
+        run: |
+          cd flutter/apps/wondermove_mobile
+          dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: |
+          cd flutter/apps/wondermove_mobile
+          flutter analyze
+
+      - name: Check test mocking (HTTP-level only, no state-level mocks)
+        run: |
+          cd flutter/packages/test_lints && dart pub get
+          dart run bin/check.dart ../../apps/wondermove_mobile/test
+
+  unit_test:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.0
+
+      - name: Bootstrap melos workspace
+        run: |
+          cd flutter
+          dart pub get
+          dart run melos bootstrap
+
+      - name: Run tests
+        run: |
+          cd flutter/apps/wondermove_mobile
+          flutter test
+
+  # Android E2E — the driver and operations journeys, on a real emulator,
+  # against OFFLINE mocks. Runs after lint, alongside unit_test, and gates both
+  # beta deploys.
+  #
+  # Topology: the backend stack runs in docker with nginx published on :80. The
+  # emulator runs on the same runner and reaches it through
+  # `adb reverse tcp:8080 tcp:80`, which opens a listener on the EMULATOR's
+  # loopback and forwards to the runner's nginx. So the app talks to
+  # http://localhost:8080 -> nginx -> backend/kratos — the same request path
+  # prod uses, and the same one the web journey exercises.
+  #   - 8080 on the device, not 80: adb reverse opens that socket with adbd's
+  #     own privileges, and a privileged port would need root.
+  #   - localhost, not 10.0.2.2: 10.0.2.2 reaches the host too, but through the
+  #     emulator's NAT alias, which no real build ever uses.
+  #
+  # Two app-side prerequisites ship with this in the monorepo:
+  #   - environment_config.dart has an ENV=e2e case pointing at
+  #     http://localhost:8080 (ENV=local targets :3000/:4433 directly, which are
+  #     NOT published, and mean "the emulator itself" anyway).
+  #   - the DEBUG AndroidManifest allows cleartext, since API 28+ blocks plain
+  #     http and the whole harness is http. Release is untouched.
+  #
+  # External providers (OCR, SurePass) are mocked by compose.mock.yml exactly as
+  # in the web journey — the backend calls them server-side, so the emulator
+  # needs no knowledge of them.
+  android_e2e:
+    needs: [find_latest_version, lint]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -62,7 +135,7 @@ jobs:
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_READ_TOKEN }}
-          ref: ${{ inputs.ref || 'main' }}
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
           fetch-depth: 1
 
       - uses: subosito/flutter-action@v2
@@ -91,8 +164,7 @@ jobs:
 
       # wondermove_mobile depends on the in-repo path packages (auth_core,
       # auth_flutter, api_client) via pubspec_overrides.yaml, so the melos
-      # workspace has to be bootstrapped before it can resolve — same as
-      # x_deploy_base_mobile_android.yml.
+      # workspace has to be bootstrapped before it can resolve.
       - name: Bootstrap melos workspace
         run: |
           cd $FLUTTER_ROOT_DIR
@@ -175,8 +247,7 @@ jobs:
 
       # Both targets run in one emulator boot (boot is the expensive part).
       # clearPackageData=true + the orchestrator wipe the app between them, so
-      # each starts logged out — which is why the driver test does not have to
-      # undo the ops test's session.
+      # each starts logged out.
       - name: Run Patrol journeys on the emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -203,9 +274,9 @@ jobs:
           # app falls back to ENV=test and logs in against the REAL
           # test1.wondermove.in, which fails as "credentials are invalid".
           #
-          # startApp() now also asserts ENV=e2e in-app, so if the defines are
-          # ever lost again the suite fails immediately, naming the URL it was
-          # about to talk to, instead of quietly hitting a live environment.
+          # startApp() also asserts ENV=e2e in-app, so if the defines are ever
+          # lost again the suite fails immediately, naming the URL it was about
+          # to talk to, instead of quietly hitting a live environment.
           script: |
             adb reverse tcp:8080 tcp:80
             adb shell 'curl -s -o /dev/null -w "nginx from emulator: %{http_code}\n" http://localhost:8080/api/transporter' || true
@@ -230,3 +301,66 @@ jobs:
         run: |
           docker compose $COMPOSE_FILES -p $PROJECT logs --since 10m \
             backend mock-server nginx kratos || true
+
+  beta_android:
+    needs: [find_latest_version, lint, unit_test, android_e2e]
+    uses: ./.github/workflows/x_deploy_base_mobile_android.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: magnum
+      release_track: beta
+    secrets:
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
+
+  # android_e2e gates the iOS beta too: the journeys exercise the shared Dart
+  # business logic (dashboards, routing, API layer), not the Android shell, so a
+  # failure there means the iOS build is broken in the same way.
+  beta_ios:
+    needs: [find_latest_version, lint, unit_test, android_e2e]
+    uses: ./.github/workflows/x_deploy_base_mobile_ios.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: magnum
+      release_track: beta
+    secrets:
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+
+  promote_android:
+    needs: [find_latest_version, beta_android]
+    uses: ./.github/workflows/x_deploy_base_mobile_android.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: magnum
+      release_track: promote_beta_to_production
+    secrets:
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
+
+  promote_ios:
+    needs: [find_latest_version, beta_ios]
+    uses: ./.github/workflows/x_deploy_base_mobile_ios.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: magnum
+      release_track: promote_beta_to_production
+    secrets:
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
