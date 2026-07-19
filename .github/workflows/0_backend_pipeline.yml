@@ -67,6 +67,13 @@ jobs:
       - name: ID-list-in-URL lint
         working-directory: wonderWhy
         run: yarn b lint:id-list-query
+      # Same shape again: its own --max-warnings budget grandfathers the raw queries already in the
+      # tree that lack a tenantId predicate and fails only when a new un-tenanted raw query is added.
+      # Raw SQL bypasses the tenant-filter Prisma extension, which is how the tyre report leaked
+      # across tenants.
+      - name: Tenant-scope (raw query) lint
+        working-directory: wonderWhy
+        run: yarn b lint:tenant-scope
 
   unit_test:
     needs: find_latest_version
