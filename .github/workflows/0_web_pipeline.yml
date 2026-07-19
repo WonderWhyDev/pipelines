@@ -74,6 +74,29 @@ jobs:
           cd flutter/packages/test_lints && dart pub get
           dart run bin/check.dart ../../apps/${{ matrix.app }}/test
 
+      # Page-chrome tokens (docs/uniform-frontend). Same tool and package as the
+      # check above, pointed at lib/features instead of test/.
+      #
+      # Gated by a committed per-rule baseline that may only shrink, so existing
+      # drift does not block CI but no new raw color/spacing/radius or
+      # viewport-fraction sizing can be added. Deliberately per-rule rather than
+      # one global budget: a single number fails on unrelated correct code once
+      # the repo sits exactly at the limit.
+      #
+      # Regenerate after a burn-down:
+      #   cd flutter/apps/<app>
+      #   dart run ../../packages/test_lints/bin/page_chrome_check.dart \
+      #     lib/features --baseline page_chrome_baseline.txt --write-baseline
+      - name: Check page chrome tokens
+        run: |
+          cd flutter/apps/${{ matrix.app }}
+          if [ -f page_chrome_baseline.txt ]; then
+            dart run ../../packages/test_lints/bin/page_chrome_check.dart \
+              lib/features --baseline page_chrome_baseline.txt
+          else
+            echo "No page_chrome_baseline.txt for ${{ matrix.app }} — skipping."
+          fi
+
   unit_test:
     needs: find_latest_version
     runs-on: ubuntu-latest
