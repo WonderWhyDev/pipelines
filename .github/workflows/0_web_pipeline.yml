@@ -249,7 +249,6 @@ jobs:
       SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
       SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
       OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
-      OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
       OAUTH_MOBILE_APP_CLIENT_ID: ${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}
 
   deploy_prod:
@@ -268,5 +267,4 @@ jobs:
       SECURITY_GROUP_ID: ${{ secrets.SECURITY_GROUP_ID }}
       SSH_PRIVATE_KEY_FOR_EC2: ${{ secrets.SSH_PRIVATE_KEY_FOR_EC2 }}
       OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
-      OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
       OAUTH_MOBILE_APP_CLIENT_ID: ${{ secrets.OAUTH_MOBILE_APP_CLIENT_ID }}

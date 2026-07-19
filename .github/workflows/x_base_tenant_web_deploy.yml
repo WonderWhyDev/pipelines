@@ -27,8 +27,6 @@ on:
             required: true
         OAUTH_CLIENT_ID:
             required: true
-        OAUTH_CLIENT_SECRET:
-            required: true
         OAUTH_MOBILE_APP_CLIENT_ID:
             required: true
         TENANT_OAUTH_CLIENT_ID:

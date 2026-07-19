@@ -348,22 +348,30 @@ jobs:
             chmod +x ~/wonderwhy_backend/flip.sh ~/wonderwhy_backend/deploy.sh
             sudo chown -R ec2-user:ec2-user ~/wonderwhy_backend
             cd ~/wonderwhy_backend
-            sh ./deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} \
-              ${{ secrets.ZITADEL_PAT }} \
+            # deploy.sh takes these POSITIONALLY, so a dead arg must stay as ""
+            # rather than be deleted - dropping a line shifts every later arg
+            # (deploy.sh reads ${15} and ${16}, so ENV_TYPE would silently empty).
+            # Every arg is quoted for the same reason: an unquoted empty secret
+            # collapses to zero tokens and shifts the rest.
+            # 1,2,14 are "" because nothing reads them: CLIENT_ID/ZITADEL_PAT are
+            # Zitadel-era (auth is Kratos now) and COMPOSITE_API_KEY is set at
+            # runtime from Secrets Manager (see setApiKeyForPayment.ts).
+            sh ./deploy.sh "" \
+              "" \
               "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" \
-              ${{ secrets.GEN_AI_GOOGLE_API }} \
-              ${{ secrets.WHATSAPP_VERIFY_TOKEN }} \
-              ${{ secrets.WHATSAPP_ACCESS_TOKEN }} \
-              ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }} \
-              ${{ secrets.WHATSAPP_FUEL_FLOW_ID }} \
-              ${{ secrets.WHATSAPP_SHORTAGE_FLOW_ID }} \
-              ${{ secrets.WHATSAPP_LR_FLOW_ID }} \
-              ${{ secrets.COMPOSITE_KEYSTORE_PATH }} \
-              ${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }} \
-              ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
-              ${{ secrets.COMPOSITE_API_KEY }} \
-              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} \
-              ${{ secrets.ENV_TYPE }}
+              "${{ secrets.GEN_AI_GOOGLE_API }}" \
+              "${{ secrets.WHATSAPP_VERIFY_TOKEN }}" \
+              "${{ secrets.WHATSAPP_ACCESS_TOKEN }}" \
+              "${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" \
+              "${{ secrets.WHATSAPP_FUEL_FLOW_ID }}" \
+              "${{ secrets.WHATSAPP_SHORTAGE_FLOW_ID }}" \
+              "${{ secrets.WHATSAPP_LR_FLOW_ID }}" \
+              "${{ secrets.COMPOSITE_KEYSTORE_PATH }}" \
+              "${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }}" \
+              "${{ secrets.COMPOSITE_KEYSTORE_ALIAS }}" \
+              "" \
+              "${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }}" \
+              "${{ secrets.ENV_TYPE }}"
 
   deploy_prod:
     runs-on: ubuntu-latest
@@ -454,19 +462,22 @@ jobs:
             chmod +x ~/wonderwhy_backend/flip.sh ~/wonderwhy_backend/deploy.sh
             sudo chown -R ec2-user:ec2-user ~/wonderwhy_backend
             cd ~/wonderwhy_backend
-            sh ./deploy.sh ${{ secrets.OAUTH_CLIENT_ID }} \
-              ${{ secrets.ZITADEL_PAT }} \
+            # positional args: see the note on the QA deploy above. Dead args stay
+            # as "" so later positions do not shift; all args quoted so an empty
+            # secret cannot collapse and shift them either.
+            sh ./deploy.sh "" \
+              "" \
               "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" \
-              ${{ secrets.GEN_AI_GOOGLE_API }} \
-              ${{ secrets.WHATSAPP_VERIFY_TOKEN }} \
-              ${{ secrets.WHATSAPP_ACCESS_TOKEN }} \
-              ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }} \
-              ${{ secrets.WHATSAPP_FUEL_FLOW_ID }} \
-              ${{ secrets.WHATSAPP_SHORTAGE_FLOW_ID }} \
-              ${{ secrets.WHATSAPP_LR_FLOW_ID }} \
-              ${{ secrets.COMPOSITE_KEYSTORE_PATH }} \
-              ${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }} \
-              ${{ secrets.COMPOSITE_KEYSTORE_ALIAS }} \
-              ${{ secrets.COMPOSITE_API_KEY }} \
-              ${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }} \
-              ${{ secrets.ENV_TYPE }}
+              "${{ secrets.GEN_AI_GOOGLE_API }}" \
+              "${{ secrets.WHATSAPP_VERIFY_TOKEN }}" \
+              "${{ secrets.WHATSAPP_ACCESS_TOKEN }}" \
+              "${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" \
+              "${{ secrets.WHATSAPP_FUEL_FLOW_ID }}" \
+              "${{ secrets.WHATSAPP_SHORTAGE_FLOW_ID }}" \
+              "${{ secrets.WHATSAPP_LR_FLOW_ID }}" \
+              "${{ secrets.COMPOSITE_KEYSTORE_PATH }}" \
+              "${{ secrets.COMPOSITE_KEYSTORE_PASSWORD }}" \
+              "${{ secrets.COMPOSITE_KEYSTORE_ALIAS }}" \
+              "" \
+              "${{ secrets.COMPOSITE_PRIVATE_PEM_PATH }}" \
+              "${{ secrets.ENV_TYPE }}"
