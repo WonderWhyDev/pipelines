@@ -91,8 +91,15 @@ jobs:
         run: |
           cd flutter/apps/${{ matrix.app }}
           if [ -f page_chrome_baseline.txt ]; then
+            LEDGER=""
+            # chrome_debt.txt gates screen_must_return_app_page: screens listed
+            # there may still skip AppPage. The list may only shrink, so an
+            # unmigrated NEW screen fails CI by name rather than by a number.
+            if [ -f chrome_debt.txt ]; then
+              LEDGER="--ledger chrome_debt.txt"
+            fi
             dart run ../../packages/test_lints/bin/page_chrome_check.dart \
-              lib/features --baseline page_chrome_baseline.txt
+              lib/features --baseline page_chrome_baseline.txt $LEDGER
           else
             echo "No page_chrome_baseline.txt for ${{ matrix.app }} — skipping."
           fi
