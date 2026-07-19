@@ -138,6 +138,37 @@ jobs:
           ref: ${{ needs.find_latest_version.outputs.latest_version }}
           fetch-depth: 1
 
+      # functional-test image is private on GHCR; the rest are public.
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHRC_SECRET_KEY }}
+
+      # The stack is started FIRST, before any Flutter/Gradle/AVD work, and is
+      # deliberately not waited on here. The backend container runs
+      # `yarn install && yarn b pris && yarn b dev` on boot (~2min); starting it
+      # now means that happens while Flutter, melos, patrol_cli and the AVD
+      # snapshot are being set up, instead of on the critical path. By the time
+      # "Wait for backend" runs it is usually already serving.
+      - name: Bring up offline-mock stack
+        run: |
+          docker compose $COMPOSE_FILES -p $PROJECT up -d --wait db localstack mailpit
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name margin
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting_dlq.fifo --attributes FifoQueue=true
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting.fifo \
+            --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal s3 mb s3://localbucket
+          docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
+            kratos backend mock-server nginx functional-test
+
+      # ---- toolchain setup: runs while the backend above is still booting ----
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.44.0"
@@ -152,6 +183,13 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
+      # Holds both the downloaded dependencies and, since the app sets
+      # org.gradle.caching=true, the task-output build cache under
+      # caches/build-cache-1 — so an unchanged assembleDebug replays instead of
+      # recompiling. NOTE: actions/cache skips its save step when the job fails,
+      # so a run that never reaches a green finish leaves the cache cold for the
+      # next one (that is why the first three E2E runs each paid ~4m41s for a
+      # cold `./gradlew :app:dependencies`).
       - name: Cache Gradle packages
         uses: actions/cache@v5
         with:
@@ -176,28 +214,46 @@ jobs:
         # package version against a table it ships. Bump both together.
         run: dart pub global activate patrol_cli 4.4.0
 
-      # functional-test image is private on GHCR; the rest are public.
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHRC_SECRET_KEY }}
-
-      - name: Bring up offline-mock stack
+      # The emulator needs KVM, which is present on ubuntu-latest but not
+      # world-accessible by default.
+      - name: Enable KVM
         run: |
-          docker compose $COMPOSE_FILES -p $PROJECT up -d --wait db localstack mailpit
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
-            awslocal sqs create-queue --queue-name margin
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
-            awslocal sqs create-queue --queue-name gl_posting_dlq.fifo --attributes FifoQueue=true
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
-            awslocal sqs create-queue --queue-name gl_posting.fifo \
-            --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
-            awslocal s3 mb s3://localbucket
-          docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
-            kratos backend mock-server nginx functional-test
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Cold-booting the AVD costs ~1m36s every run. Cache the created AVD plus
+      # its saved snapshot so later runs resume from it in a few seconds. The key
+      # pins every property that changes the image, so bumping api-level/target/
+      # arch/profile below rebuilds it rather than restoring a mismatched device.
+      - name: Cache AVD snapshot
+        uses: actions/cache@v5
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-google_apis-x86_64-pixel_5
+
+      # Only on a cache miss: boot once to generate the snapshot, saving nothing
+      # else. Note this deliberately omits -no-snapshot (which would disable
+      # snapshotting entirely) so the emulator writes one out on exit.
+      - name: Create AVD snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          ram-size: 4096M
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -timezone UTC
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
+      # ---- back to the stack, which has been warming this whole time ----
 
       # bin/ is gitignored in the monorepo (so bin/wait-for-backend.sh is absent
       # on CI and the volume mount hides any baked-in copy). Inline the same poll.
@@ -236,15 +292,6 @@ jobs:
             sh -c "pkill -f seed_mobile || true" >/dev/null 2>&1
           grep -q "seed-mobile] done" /tmp/seed.log
 
-      # The emulator needs KVM, which is present on ubuntu-latest but not
-      # world-accessible by default.
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
       # Both targets run in one emulator boot (boot is the expensive part).
       # clearPackageData=true + the orchestrator wipe the app between them, so
       # each starts logged out.
@@ -256,6 +303,10 @@ jobs:
           arch: x86_64
           profile: pixel_5
           ram-size: 4096M
+          # Reuse the cached AVD and resume from its snapshot instead of cold
+          # booting; -no-snapshot-save keeps this run from rewriting it (and so
+          # from persisting whatever the tests leave behind).
+          force-avd-creation: false
           disable-animations: true
           # -timezone UTC is load-bearing, not hygiene. The operations dashboard
           # derives its default "yesterday" range from the DEVICE's local date,
@@ -263,7 +314,7 @@ jobs:
           # date. If the two disagree on what "yesterday" is, the range misses
           # the seeded trip by a whole day and the ops test fails on an empty
           # panel. Runners are UTC today, so this only pins what is already true.
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -timezone UTC
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot-save -noaudio -no-boot-anim -timezone UTC
           working-directory: flutter/apps/wondermove_mobile
           # KEEP THE PATROL COMMAND ON ONE LINE. This action runs `script:` one
           # line per `sh -c`, so a backslash line-continuation does NOT continue:
