@@ -154,6 +154,14 @@ jobs:
       # "Wait for backend" runs it is usually already serving.
       - name: Bring up offline-mock stack
         run: |
+          # compose.yml bind-mounts ~/.pub-cache into three services. Docker
+          # creates a missing bind-mount source as ROOT, and because this step
+          # now runs before flutter-action (which used to create it first), that
+          # left ~/.pub-cache unwritable by the runner: the next `dart pub get`
+          # died with "Creation failed, path = '/home/runner/.pub-cache/
+          # hosted-hashes' (OS Error: Permission denied)". Create it ourselves so
+          # docker mounts an existing, runner-owned directory.
+          mkdir -p ~/.pub-cache
           docker compose $COMPOSE_FILES -p $PROJECT up -d --wait db localstack mailpit
           docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
             awslocal sqs create-queue --queue-name margin
