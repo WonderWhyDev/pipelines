@@ -39,6 +39,12 @@ jobs:
   patrol-web:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      # compose.local.yml publishes nginx on ${WEB_PORT} and requires it to be set,
+      # so that a developer box cannot silently grab the shared host port. A CI
+      # runner is single-tenant, so 80 is both free and what the app expects: the
+      # Patrol app under --dart-define=E2E=true strips its own port to find nginx.
+      WEB_PORT: 80
     steps:
       # The code + compose files live in the wonderWhy monorepo, not here, so
       # check THAT out (a bare checkout left compose.yml absent -> the bring-up
