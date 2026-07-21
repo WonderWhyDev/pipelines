@@ -44,7 +44,9 @@ on:
 jobs:
   journey:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Covers two Patrol suites off one bring-up: the driver-advance journey plus
+    # the operations dashboard (its own seed, a ~1min build and a ~40s run).
+    timeout-minutes: 60
     env:
       COMPOSE_FILES: "-f compose.yml -f compose.local.yml -f compose.mock.yml"
       PROJECT: journey
@@ -173,11 +175,85 @@ jobs:
             --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
             --verbose
 
+      # Uploaded BEFORE the operations suite runs: patrol writes every run to the
+      # same playwright-report directory, so the second run would overwrite this.
       - name: Upload Patrol report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: journey-playwright-report
+          path: flutter/apps/wondermove_web/playwright-report
+          if-no-files-found: ignore
+
+      # ---------------------------------------------------------------------
+      # Operations dashboard suite. Rides this same stack rather than getting its
+      # own workflow: the two seeds cannot collide (seed_journey owns the
+      # `journey_tenant` tenant and TN01MOCK*/TN02MARKET* vehicles; seed_operations
+      # owns the `platform_management` master tenant and TNOPS01-15), so reusing
+      # the bring-up saves a full backend/kratos/nginx build. compose.mock.yml
+      # staying loaded is harmless here — the dashboard is read-only and never
+      # touches OCR, SurePass or S3.
+      #
+      # continue-on-error while the suite proves itself: this workflow is a hard
+      # gate on deploy_qa in both 0_backend_pipeline.yml and 0_web_pipeline.yml, so
+      # without the flag an operations regression would block prod immediately.
+      # Drop all three flags once it has gone green a few consecutive runs — that
+      # is the only change needed to promote it to a real gate.
+      # ---------------------------------------------------------------------
+
+      # Same stream-and-kill shape as the journey seed: seed_operations.dart
+      # commits its work, prints the marker, then hangs (the Dart VM does not exit).
+      # The step's verdict is the marker, not the exit code.
+      - name: Seed operations fixtures
+        continue-on-error: true
+        run: |
+          set +e
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
+            sh -c "cd /app/functional-test && dart pub get && dart run tool/seed_operations.dart" \
+            > /tmp/seed-operations.log 2>&1 &
+          EXEC_PID=$!
+          for i in $(seq 1 120); do
+            grep -q "seed-operations] done" /tmp/seed-operations.log && break
+            kill -0 "$EXEC_PID" 2>/dev/null || break
+            sleep 2
+          done
+          cat /tmp/seed-operations.log
+          kill "$EXEC_PID" 2>/dev/null
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
+            sh -c "pkill -f seed_operations || true" >/dev/null 2>&1
+          grep -q "seed-operations] done" /tmp/seed-operations.log
+
+      # 15 trip variants x 14 summary columns, both KPI strips, the date-range
+      # modes and the branchwise truck status. No sed/pub-get here: the journey
+      # step above already rewrote web/index.html and resolved deps in this job.
+      # --lang=en-US for the same reason as the journey step.
+      - name: Patrol operations dashboard (UI)
+        continue-on-error: true
+        working-directory: flutter/apps/wondermove_web
+        env:
+          LANG: en_US.UTF-8
+          LANGUAGE: en_US:en
+          LC_ALL: en_US.UTF-8
+        run: |
+          export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
+          PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
+            --target patrol_test/journey/operations_dashboard_test.dart \
+            --web-port 3005 \
+            --dart-define=ENV=local --dart-define=E2E=true \
+            --web-headless true --web-server-timeout 600 \
+            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
+            --verbose
+
+      # No `if: always()` here, unlike the journey upload. continue-on-error on the
+      # step above already lets a failed operations run reach this one, whereas
+      # always() would also fire when the JOURNEY failed and the operations steps
+      # were skipped — uploading the journey's leftover report under the operations
+      # name.
+      - name: Upload operations Patrol report
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: operations-playwright-report
           path: flutter/apps/wondermove_web/playwright-report
           if-no-files-found: ignore
 
