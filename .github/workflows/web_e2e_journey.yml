@@ -194,18 +194,11 @@ jobs:
       # staying loaded is harmless here — the dashboard is read-only and never
       # touches OCR, SurePass or S3.
       #
-      # continue-on-error while the suite proves itself: this workflow is a hard
-      # gate on deploy_qa in both 0_backend_pipeline.yml and 0_web_pipeline.yml, so
-      # without the flag an operations regression would block prod immediately.
-      # Drop all three flags once it has gone green a few consecutive runs — that
-      # is the only change needed to promote it to a real gate.
-      # ---------------------------------------------------------------------
 
       # Same stream-and-kill shape as the journey seed: seed_operations.dart
       # commits its work, prints the marker, then hangs (the Dart VM does not exit).
       # The step's verdict is the marker, not the exit code.
       - name: Seed operations fixtures
-        continue-on-error: true
         run: |
           set +e
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
@@ -228,7 +221,6 @@ jobs:
       # step above already rewrote web/index.html and resolved deps in this job.
       # --lang=en-US for the same reason as the journey step.
       - name: Patrol operations dashboard (UI)
-        continue-on-error: true
         working-directory: flutter/apps/wondermove_web
         env:
           LANG: en_US.UTF-8
@@ -244,13 +236,7 @@ jobs:
             --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
             --verbose
 
-      # No `if: always()` here, unlike the journey upload. continue-on-error on the
-      # step above already lets a failed operations run reach this one, whereas
-      # always() would also fire when the JOURNEY failed and the operations steps
-      # were skipped — uploading the journey's leftover report under the operations
-      # name.
       - name: Upload operations Patrol report
-        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: operations-playwright-report
