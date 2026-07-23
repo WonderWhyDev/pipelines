@@ -241,11 +241,11 @@ jobs:
         working-directory: wonderWhy
         run: docker compose -p ci down -v
 
-  # Hard gate before QA (and therefore prod): the full driver-advance journey (real
-  # UI, real backend, offline OCR/HDFC mocks) on the exact commit being deployed.
-  # Hangs off lint so it runs in parallel with the unit and functional tests; a red
-  # journey blocks deploy_qa. Complements functional_test (test/api/) — this one is
-  # test/mock/ plus the Patrol UI flow.
+  # Hard gate before prod: the full driver-advance journey (real UI, real backend,
+  # offline OCR/HDFC mocks) on the exact commit being promoted. Hangs off lint so it
+  # runs in parallel with the unit tests, the functional tests and the QA deploy; a
+  # red journey blocks deploy_prod (QA still deploys). Complements functional_test
+  # (test/api/) — this one is test/mock/ plus the Patrol UI flow.
   e2e_journey:
     needs: [find_latest_version, lint]
     uses: ./.github/workflows/web_e2e_journey.yml
@@ -257,7 +257,7 @@ jobs:
 
   deploy_qa:
     runs-on: ubuntu-latest
-    needs: [find_latest_version, lint, unit_test, functional_test, e2e_journey]
+    needs: [find_latest_version, lint, unit_test, functional_test]
     outputs:
       latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
     environment:
@@ -375,7 +375,7 @@ jobs:
 
   deploy_prod:
     runs-on: ubuntu-latest
-    needs: [find_latest_version, deploy_qa]
+    needs: [find_latest_version, deploy_qa, e2e_journey]
     environment: magnum
     steps:
       - name: Check out pipelines repo for actions

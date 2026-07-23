@@ -97,8 +97,9 @@ jobs:
           flutter test
 
   # Android E2E — the driver and operations journeys, on a real emulator,
-  # against OFFLINE mocks. Runs after lint, alongside unit_test, and gates both
-  # beta deploys.
+  # against OFFLINE mocks. Runs after lint, alongside unit_test. It does NOT gate
+  # the beta deploys (beta ships to testers regardless); it gates the two
+  # production promotions — a red journey blocks promote_android/promote_ios.
   #
   # Topology: the backend stack runs in docker with nginx published on :80. The
   # emulator runs on the same runner and reaches it through
@@ -366,7 +367,7 @@ jobs:
             backend mock-server nginx kratos || true
 
   beta_android:
-    needs: [find_latest_version, lint, unit_test, android_e2e]
+    needs: [find_latest_version, lint, unit_test]
     uses: ./.github/workflows/x_deploy_base_mobile_android.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
@@ -379,11 +380,8 @@ jobs:
       KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
 
-  # android_e2e gates the iOS beta too: the journeys exercise the shared Dart
-  # business logic (dashboards, routing, API layer), not the Android shell, so a
-  # failure there means the iOS build is broken in the same way.
   beta_ios:
-    needs: [find_latest_version, lint, unit_test, android_e2e]
+    needs: [find_latest_version, lint, unit_test]
     uses: ./.github/workflows/x_deploy_base_mobile_ios.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
@@ -399,7 +397,7 @@ jobs:
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
 
   promote_android:
-    needs: [find_latest_version, beta_android]
+    needs: [find_latest_version, beta_android, android_e2e]
     uses: ./.github/workflows/x_deploy_base_mobile_android.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
@@ -412,8 +410,11 @@ jobs:
       KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
 
+  # android_e2e gates the iOS production promotion too: the journeys exercise the
+  # shared Dart business logic (dashboards, routing, API layer), not the Android
+  # shell, so a failure there means the iOS build is broken in the same way.
   promote_ios:
-    needs: [find_latest_version, beta_ios]
+    needs: [find_latest_version, beta_ios, android_e2e]
     uses: ./.github/workflows/x_deploy_base_mobile_ios.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
