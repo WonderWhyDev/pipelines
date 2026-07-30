@@ -237,6 +237,69 @@ jobs:
           path: flutter/apps/wondermove_web/playwright-report
           if-no-files-found: ignore
 
+      # THIS SUITE MUST STAY LAST IN THE JOB.
+      #
+      # seed_vehicle_attendance.dart calls resetTripData(), which is TENANT-WIDE:
+      # it deletes every overallTrip, fuel, trip leg, loadingReceipt and
+      # pricePoint on the master tenant -- including the 15 variants the
+      # operations dashboard asserts above. seed_operations.dart does the same in
+      # reverse. The two only coexist because the operations assertions have
+      # already finished by the time this seed runs.
+      #
+      # So: do not insert a step after this one that reads trip data, and do not
+      # reorder. Doing either makes the operations suite fail with numbers that
+      # look like a backend bug rather than a sequencing one.
+      - name: Seed vehicle attendance fixtures
+        run: |
+          set +e
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
+            sh -c "cd /app/functional-test && dart run tool/seed_vehicle_attendance.dart" \
+            > /tmp/seed-vehicle-attendance.log 2>&1 &
+          EXEC_PID=$!
+          for i in $(seq 1 120); do
+            grep -q "seed-vehicle-attendance] done" /tmp/seed-vehicle-attendance.log && break
+            kill -0 "$EXEC_PID" 2>/dev/null || break
+            sleep 2
+          done
+          cat /tmp/seed-vehicle-attendance.log
+          kill "$EXEC_PID" 2>/dev/null
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
+            sh -c "pkill -f seed_vehicle_attendance || true" >/dev/null 2>&1
+          grep -q "seed-vehicle-attendance] done" /tmp/seed-vehicle-attendance.log
+
+      # 16 vehicles x (today's column + a full previous-month status walk), the
+      # five summary columns and the TOTAL footer. Covers the seam neither the
+      # widget tests nor the API suite reach: a trip created through the real
+      # trip APIs landing in truckStatusHistory and rendering as the right letter
+      # for the right vehicle on the right day, in a browser.
+      #
+      # No sed/pub-get here, same as the operations step: the journey step above
+      # already rewrote web/index.html and resolved deps in this job. No
+      # E2E_ORIGIN either -- WEB_PORT is 80 here, so the app resolves its own
+      # origin from Uri.base.
+      - name: Patrol vehicle attendance (UI)
+        working-directory: flutter/apps/wondermove_web
+        env:
+          LANG: en_US.UTF-8
+          LANGUAGE: en_US:en
+          LC_ALL: en_US.UTF-8
+        run: |
+          export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
+          PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
+            --target patrol_test/journey/vehicle_attendance_test.dart \
+            --web-port 3005 \
+            --dart-define=ENV=local --dart-define=E2E=true \
+            --web-headless true --web-server-timeout 600 \
+            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
+            --verbose
+
+      - name: Upload vehicle attendance Patrol report
+        uses: actions/upload-artifact@v4
+        with:
+          name: vehicle-attendance-playwright-report
+          path: flutter/apps/wondermove_web/playwright-report
+          if-no-files-found: ignore
+
       - name: Dump container logs on failure
         if: failure()
         run: |
