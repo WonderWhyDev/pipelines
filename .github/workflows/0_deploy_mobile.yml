@@ -223,9 +223,10 @@ jobs:
           dart run melos bootstrap
 
       - name: Activate Patrol CLI
-        # Pinned to match the app's patrol package (4.6.1); the CLI validates the
-        # package version against a table it ships. Bump both together.
-        run: dart pub global activate patrol_cli 4.4.0
+        # Pinned to match the app's patrol package (4.9.0); the CLI validates the
+        # package version against a table it ships, which pairs patrol_cli 4.7.0+
+        # with patrol 4.9.0+. Bump both together.
+        run: dart pub global activate patrol_cli 4.7.0
 
       # The emulator needs KVM, which is present on ubuntu-latest but not
       # world-accessible by default.

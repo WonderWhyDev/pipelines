@@ -66,10 +66,10 @@ jobs:
           node-version: "22"
 
       - name: Activate Patrol CLI
-        # Pin to the CLI that matches the app's patrol package (4.6.1). The latest
-        # published patrol_cli (4.5.0) added a strict check that rejects patrol
-        # 4.6.1, and no 4.6.x CLI exists yet; 4.4.0 is the version that runs it.
-        run: dart pub global activate patrol_cli 4.4.0
+        # Pin to the CLI that matches the app's patrol package (4.9.0). The CLI
+        # validates the package against a compatibility table it ships: 4.7.0+
+        # pairs with patrol 4.9.0+, while the older 4.4.0 pin rejects it.
+        run: dart pub global activate patrol_cli 4.7.0
 
       # functional-test image is private on GHCR; the rest are public.
       - name: Login to GHCR
@@ -130,7 +130,7 @@ jobs:
             sh -c "pkill -f seed_journey || true" >/dev/null 2>&1
           grep -q "seed-journey] done" /tmp/seed.log
 
-      # Pin to the Playwright version patrol's web_runner bundles (patrol 4.6.1 ->
+      # Pin to the Playwright version patrol's web_runner bundles (patrol 4.9.0 ->
       # playwright 1.56.0) so patrol's own `npx playwright install` is a cached no-op.
       - name: Install Playwright Chromium (match patrol web_runner)
         run: npx --yes playwright@1.56.0 install --with-deps chromium
