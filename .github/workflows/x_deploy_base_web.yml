@@ -57,6 +57,17 @@ jobs:
           fetch-depth: 1
           ref: ${{ inputs.versionToBuild }}
 
+      # The public marketing site lives outside the monorepo (12 MB of binary
+      # content no application code imports). Tracks main rather than a pinned
+      # ref on purpose: a copy fix should ship without a wonderWhy commit.
+      - name: Check out public site assets
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/web-app-assets
+          token: ${{ secrets.REPO_TOKEN }}
+          path: webAppAssets
+          fetch-depth: 1
+
       - name: Set up Flutter SDK
         uses: subosito/flutter-action@v2
         with:
@@ -77,6 +88,12 @@ jobs:
           yarn workspace web build
           mkdir webDeploy
           mv web/dist webDeploy/reactWeb
+
+      # Sourced from the webAppAssets checkout, not wonderWhy. Lands at the same
+      # path with the same contents, so brotli/zip/copy_to_ec2 and the nginx
+      # server block downstream are unaffected.
+      - name: build wondermove site
+        run: mv webAppAssets/wondermoveSite wonderWhy/webDeploy/wondermoveSite
 
       - name: build vijay bulk transport site
         run: |
