@@ -78,11 +78,6 @@ jobs:
           mkdir webDeploy
           mv web/dist webDeploy/reactWeb
 
-      - name: build wondermove site
-        run: |
-          cd wonderWhy
-          mv wondermoveSite webDeploy/wondermoveSite
-
       - name: build vijay bulk transport site
         run: |
           cd wonderWhy
@@ -178,7 +173,6 @@ jobs:
             mkdir ~/nginx/html
             mkdir ~/nginx/flutterflow
             mkdir ~/nginx/config
-            mkdir ~/nginx/wondermoveSite
             mkdir ~/nginx/vijayBulkTransport
             mkdir ~/nginx/flutterWeb
             mkdir ~/nginx/flutterMakeWeb
@@ -186,7 +180,6 @@ jobs:
             cp -r reactWeb/* ~/nginx/html/
             cp -r flutterWeb/* ~/nginx/flutterWeb/
             cp -r flutterMakeWeb/* ~/nginx/flutterMakeWeb/
-            cp -rT wondermoveSite ~/nginx/wondermoveSite
             cp -r vijayBulkTransport/* ~/nginx/vijayBulkTransport/
             echo "completed copying files"
             echo '{
