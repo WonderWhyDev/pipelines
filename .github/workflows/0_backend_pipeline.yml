@@ -43,7 +43,7 @@ jobs:
           ref: ${{ needs.find_latest_version.outputs.latest_version }}
       - uses: actions/setup-node@v5
         with:
-          node-version: '24.11.1'
+          node-version: '26.8.1'
           cache: 'yarn'
           cache-dependency-path: wonderWhy/yarn.lock
       - working-directory: wonderWhy
@@ -142,7 +142,7 @@ jobs:
           ref: ${{ needs.find_latest_version.outputs.latest_version }}
       - uses: actions/setup-node@v5
         with:
-          node-version: '24.11.1'
+          node-version: '26.8.1'
           cache: 'yarn'
           cache-dependency-path: wonderWhy/yarn.lock
       - working-directory: wonderWhy
@@ -277,7 +277,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: '24.11.1'
+          node-version: '26.8.1'
           cache: 'yarn'
           cache-dependency-path: 'wonderWhy/yarn.lock'
 
@@ -392,7 +392,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: '24.11.1'
+          node-version: '26.8.1'
           cache: 'yarn'
           cache-dependency-path: 'wonderWhy/yarn.lock'
 
