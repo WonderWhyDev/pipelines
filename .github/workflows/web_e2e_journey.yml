@@ -146,6 +146,18 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
             sh -c "cd /app/functional-test && dart test test/mock/"
 
+      - name: Generate HDFC mock gate report
+        if: always()
+        run: python3 functional-test/scripts/gen_test_report.py
+
+      - name: Upload HDFC mock gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hdfc-mock-gate-report
+          path: functional-test/testReports/report.html
+          if-no-files-found: warn
+
       # Pin to the Playwright version patrol's web_runner bundles (patrol 4.9.0 ->
       # playwright 1.56.0). Installing the matching browser + system deps here makes
       # patrol's own `npx playwright install` a cached no-op instead of failing.
@@ -242,6 +254,7 @@ jobs:
             --verbose
 
       - name: Upload operations Patrol report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: operations-playwright-report
@@ -305,6 +318,7 @@ jobs:
             --verbose
 
       - name: Upload vehicle attendance Patrol report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: vehicle-attendance-playwright-report

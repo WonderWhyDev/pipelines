@@ -215,6 +215,19 @@ jobs:
           docker compose -p ci exec -T functional-test sh -c \
             "cd /app/functional-test && dart pub get && dart test --concurrency=1 test/api/"
 
+      - name: Generate functional test HTML report
+        if: always()
+        working-directory: wonderWhy
+        run: python3 functional-test/scripts/gen_test_report.py
+
+      - name: Upload functional test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functional-test-report
+          path: wonderWhy/functional-test/testReports/report.html
+          if-no-files-found: warn
+
       - name: Diagnostics on failure
         if: failure()
         working-directory: wonderWhy
