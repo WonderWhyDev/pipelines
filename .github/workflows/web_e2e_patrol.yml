@@ -61,9 +61,16 @@ jobs:
           flutter-version: "3.44.0"
           channel: stable
 
+      # Stays on 22 while the rest of CI runs 26.8.1. This runner's node is used
+      # for exactly one thing - `npx playwright install` below - and playwright
+      # 1.56.0 hangs forever unpacking chromium-linux.zip under node 26 (download
+      # reaches 100%, the extract never completes, the job burns its full timeout).
+      # The containers this workflow drives run their own node 26; the runner's
+      # version has no bearing on them. Revisit when patrol ships a playwright
+      # that supports node 26.
       - uses: actions/setup-node@v4
         with:
-          node-version: "26.8.1"
+          node-version: "22"
 
       - name: Activate Patrol CLI
         # Pin to the CLI that matches the app's patrol package (4.9.0). The CLI
@@ -132,7 +139,11 @@ jobs:
 
       # Pin to the Playwright version patrol's web_runner bundles (patrol 4.9.0 ->
       # playwright 1.56.0) so patrol's own `npx playwright install` is a cached no-op.
+      # timeout: this install is ~30s of download plus a few seconds of unpack.
+      # Capped so a repeat of the node-26 unpack hang fails here in minutes
+      # instead of silently eating the whole job budget.
       - name: Install Playwright Chromium (match patrol web_runner)
+        timeout-minutes: 10
         run: npx --yes playwright@1.56.0 install --with-deps chromium
 
       # --lang=en-US: headless chromium otherwise exposes an empty/malformed
