@@ -217,8 +217,8 @@ jobs:
 
       - name: Generate functional test HTML report
         if: always()
-        working-directory: wonderWhy
-        run: python3 functional-test/scripts/gen_test_report.py
+        working-directory: wonderWhy/functional-test
+        run: python3 scripts/gen_test_report.py
 
       - name: Upload functional test report
         if: always()
