@@ -72,7 +72,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.44.0
+          flutter-version: 3.47.3
           cache: true
 
       - uses: actions/setup-node@v7
@@ -117,9 +117,7 @@ jobs:
       # Codegen intentionally skipped at deploy time: generated files
       # (*.g.dart, *.freezed.dart) are committed to the repo, and `flutter build
       # web` does not run build_runner. wondermake_web (below) already builds the
-      # same way with no codegen step. Running build_runner here fails under
-      # Flutter 3.44 / Dart 3.12: the pinned pub analyzer (7.6.0) cannot
-      # serialize dot-shorthand AST nodes (visitDotShorthandInvocation).
+      # same way with no codegen step.
 
       - name: Build flutter web
         run: |

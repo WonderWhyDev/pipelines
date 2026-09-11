@@ -58,7 +58,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.44.0"
+          flutter-version: "3.47.3"
           channel: stable
 
       # Stays on 22 while the rest of CI runs 26.8.1. This runner's node is used
