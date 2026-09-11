@@ -215,13 +215,27 @@ jobs:
           docker compose -p ci exec -T functional-test sh -c \
             "cd /app/functional-test && dart pub get && dart test --concurrency=1 --file-reporter=json:testReports/results.json test/api/"
 
+      # The container writes testReports/ as its own (non-runner) user, so the
+      # bind-mounted directory on the host isn't writable by the runner user that
+      # the next step runs as. Only the container can fix its own files' perms.
+      - name: Fix testReports permissions
+        if: always()
+        working-directory: wonderWhy
+        run: |
+          docker compose -p ci exec -T functional-test sh -c \
+            "chmod -R a+rwX testReports 2>/dev/null || true"
+
+      # continue-on-error: a bug in the report generator must never fail the job —
+      # the real test result already stands from the "Run API tests" step above.
       - name: Generate functional test HTML report
         if: always()
+        continue-on-error: true
         working-directory: wonderWhy/functional-test
         run: python3 scripts/gen_test_report.py
 
       - name: Upload functional test report
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: functional-test-report

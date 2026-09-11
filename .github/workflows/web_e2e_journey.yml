@@ -146,13 +146,27 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
             sh -c "cd /app/functional-test && dart test --file-reporter=json:testReports/results.json test/mock/"
 
+      # The container writes testReports/ as its own (non-runner) user, so the
+      # bind-mounted directory on the host isn't writable by the runner user that
+      # the next step runs as. Only the container can fix its own files' perms.
+      - name: Fix testReports permissions
+        if: always()
+        run: |
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
+            sh -c "chmod -R a+rwX /app/functional-test/testReports 2>/dev/null || true"
+
+      # continue-on-error: this suite is a small extra on top of the blocking
+      # Patrol journey below it — a bug in the report generator must never abort
+      # the job before the actual journey/operations/vehicle-attendance runs.
       - name: Generate HDFC mock gate report
         if: always()
+        continue-on-error: true
         working-directory: functional-test
         run: python3 scripts/gen_test_report.py
 
       - name: Upload HDFC mock gate report
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: hdfc-mock-gate-report
