@@ -144,7 +144,7 @@ jobs:
       - name: GATE — offline HDFC mock system test
         run: |
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "cd /app/functional-test && dart test test/mock/"
+            sh -c "cd /app/functional-test && dart test --file-reporter=json:testReports/results.json test/mock/"
 
       - name: Generate HDFC mock gate report
         if: always()
