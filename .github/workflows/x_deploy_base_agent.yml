@@ -79,7 +79,7 @@ jobs:
       # limit must fail here, not surface later as an opaque Lambda error.
       - name: Size gate
         working-directory: wonderWhy/agents
-        run: bash scripts/sizeGate.sh
+        run: bash scripts/sizeGate.sh ${{ inputs.agent }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
