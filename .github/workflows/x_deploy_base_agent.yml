@@ -1,0 +1,153 @@
+name: X_Deploy_Base_Agent
+
+# Deliberately does NOT use the ./.github/actions/copy_to_ec2 composite action that
+# every other x_deploy_base_*.yml uses. Agents are Lambdas, not EC2 blue/green
+# containers - the artifact goes to S3 and the code is switched with
+# `aws lambda update-function-code`, not copied over SSH.
+
+on:
+  workflow_call:
+    inputs:
+      versionToBuild:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      agent:
+        required: true
+        type: string
+      functionName:
+        required: true
+        type: string
+      artifactBucket:
+        required: true
+        type: string
+    secrets:
+      REPO_TOKEN:
+        required: true
+      AWS_ACCESS_KEY:
+        required: true
+      AWS_SECRET_KEY:
+        required: true
+      AWS_REGION:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    steps:
+      - name: Check out agents/ folder
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          sparse-checkout: 'agents'
+          sparse-checkout-cone-mode: false
+          ref: ${{ inputs.versionToBuild }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+
+      - name: Install dependencies
+        working-directory: wonderWhy/agents
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        working-directory: wonderWhy/agents
+        run: bun run lint
+
+      - name: Typecheck
+        working-directory: wonderWhy/agents
+        run: bunx tsc --noEmit
+
+      - name: Unit + golden tests
+        working-directory: wonderWhy/agents
+        run: bun test
+
+      - name: Build the agent binary
+        working-directory: wonderWhy/agents
+        run: bash scripts/build.sh ${{ inputs.agent }}
+
+      # Before any credential step: a build that quietly grew past the direct-upload
+      # limit must fail here, not surface later as an opaque Lambda error.
+      - name: Size gate
+        working-directory: wonderWhy/agents
+        run: bash scripts/sizeGate.sh
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # The currently-live artifact key, read back before we overwrite it, so a
+      # smoke-test failure below can print the exact command to put it back. Absent
+      # on the very first deploy of an agent - "none" then, and the rollback step
+      # says so instead of printing a broken command.
+      - name: Resolve previous deployed key
+        working-directory: wonderWhy/agents
+        run: |
+          aws s3 cp "s3://${{ inputs.artifactBucket }}/agents/${{ inputs.agent }}/current.txt" previous_key.txt \
+            || echo "none" > previous_key.txt
+          echo "Previous deployed key: $(cat previous_key.txt)"
+
+      - name: Upload artifact to S3
+        working-directory: wonderWhy/agents
+        run: |
+          aws s3 cp "dist/${{ inputs.agent }}/bootstrap.zip" \
+            "s3://${{ inputs.artifactBucket }}/agents/${{ inputs.agent }}/${{ inputs.versionToBuild }}.zip"
+
+      - name: Update Lambda function code
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ inputs.functionName }}" \
+            --s3-bucket "${{ inputs.artifactBucket }}" \
+            --s3-key "agents/${{ inputs.agent }}/${{ inputs.versionToBuild }}.zip" \
+            --publish
+
+      - name: Wait for the update to finish
+        run: aws lambda wait function-updated --function-name "${{ inputs.functionName }}"
+
+      - name: Smoke test - invoke with a known fixture
+        working-directory: wonderWhy/agents
+        run: |
+          aws lambda invoke \
+            --function-name "${{ inputs.functionName }}" \
+            --cli-binary-format raw-in-base64-out \
+            --payload fileb://fixtures/smoke/mtps-mettur.json \
+            out.json
+          cat out.json
+          jq -e '.verdict=="RESOLVED" and .pin!=null' out.json
+
+      # Only reached once the smoke test above has passed - this is the new
+      # "known good" key for the NEXT deploy's rollback step to read back.
+      - name: Record this deploy as the current key
+        working-directory: wonderWhy/agents
+        run: |
+          echo "${{ inputs.versionToBuild }}.zip" > current.txt
+          aws s3 cp current.txt "s3://${{ inputs.artifactBucket }}/agents/${{ inputs.agent }}/current.txt"
+
+      - name: On failure, print the rollback command
+        if: failure()
+        working-directory: wonderWhy/agents
+        run: |
+          PREVIOUS=$(cat previous_key.txt 2>/dev/null || echo "none")
+          if [ "$PREVIOUS" = "none" ]; then
+            echo "No previous deployed key on record for ${{ inputs.agent }} in ${{ inputs.artifactBucket }} - this looks like the first deploy. Nothing to roll back to; fix the code and re-run."
+          else
+            echo "Deploy failed. To roll back ${{ inputs.functionName }} to the previous artifact, run:"
+            echo ""
+            echo "  aws lambda update-function-code \\"
+            echo "    --function-name ${{ inputs.functionName }} \\"
+            echo "    --s3-bucket ${{ inputs.artifactBucket }} \\"
+            echo "    --s3-key agents/${{ inputs.agent }}/$PREVIOUS \\"
+            echo "    --publish"
+          fi

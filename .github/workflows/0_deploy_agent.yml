@@ -1,0 +1,68 @@
+name: "0_Deploy_Agent"
+run-name: Deploy_Agent_-_${{ inputs.agent }}_-_${{ inputs.branch || 'main' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'wonderWhy branch to build/test/deploy'
+        required: true
+        type: string
+        default: main
+      agent:
+        description: 'Which agent to deploy'
+        required: true
+        type: choice
+        default: geo
+        options:
+          - geo
+
+jobs:
+  find_latest_version:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_version: ${{ steps.get_version.outputs.latest_version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.branch }}
+          fetch-depth: 1
+          sparse-checkout: '.gitignore'
+          sparse-checkout-cone-mode: false
+      - id: get_version
+        run: |
+          latest_version=$(git log -1 --format=%H)
+          echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
+          echo "Resolved ${{ inputs.branch }} to $latest_version"
+
+  deploy_qa:
+    uses: ./.github/workflows/x_deploy_base_agent.yml
+    needs: find_latest_version
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: qa
+      agent: ${{ inputs.agent }}
+      functionName: wondermove-agent-${{ inputs.agent }}
+      artifactBucket: test1-v4.wondermove.in
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+
+  deploy_prod:
+    needs: [find_latest_version, deploy_qa]
+    uses: ./.github/workflows/x_deploy_base_agent.yml
+    with:
+      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      environment: magnum
+      agent: ${{ inputs.agent }}
+      functionName: wondermove-agent-${{ inputs.agent }}
+      artifactBucket: magnum.ap-south-1
+    secrets:
+      REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
