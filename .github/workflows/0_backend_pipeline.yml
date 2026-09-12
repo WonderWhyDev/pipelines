@@ -157,6 +157,34 @@ jobs:
     permissions:
       contents: read
       packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # tenant_api has no destructive resets; vehicle_attendance scopes its
+          # resets by its own VAT vehicle-number prefix — neither can collide
+          # with the other, and both are sub-2-second suites, so they share a
+          # leg rather than each paying the full bring-up cost alone.
+          - name: tenant_and_attendance
+            targets: test/api/tenant_api_test.dart test/api/vehicle_attendance_test.dart
+          - name: own_vehicle_trip
+            targets: test/api/own_vehicle_trip_test.dart
+          # mileage_recalc_test.dart was split into these 4 files (see
+          # wonderWhy commit) because it alone was ~88% of this job's test
+          # time — each file gets its own isolated compose stack/DB here so
+          # its resetMileageData() (tenant-wide DELETE on fuel/mileage rows)
+          # can never collide with another leg.
+          - name: mileage_boundary
+            targets: test/api/mileage_recalc_boundary_test.dart
+          - name: mileage_edit
+            targets: test/api/mileage_recalc_edit_test.dart
+          - name: mileage_trip
+            targets: test/api/mileage_recalc_trip_test.dart
+          - name: mileage_task
+            targets: test/api/mileage_recalc_task_test.dart
+    name: Functional Tests (${{ matrix.name }})
+    env:
+      PROJECT: ci-${{ matrix.name }}
     steps:
       - name: Checkout wonderWhy
         uses: actions/checkout@v5
@@ -180,25 +208,25 @@ jobs:
       - name: Bring up localstack and create SQS queue
         working-directory: wonderWhy
         run: |
-          docker compose -p ci up -d --wait localstack
-          docker compose -p ci exec -T localstack awslocal sqs create-queue --queue-name margin
-          docker compose -p ci exec -T localstack awslocal sqs create-queue \
+          docker compose -p $PROJECT up -d --wait localstack
+          docker compose -p $PROJECT exec -T localstack awslocal sqs create-queue --queue-name margin
+          docker compose -p $PROJECT exec -T localstack awslocal sqs create-queue \
             --queue-name gl_posting_dlq.fifo --attributes FifoQueue=true
-          docker compose -p ci exec -T localstack awslocal sqs create-queue \
+          docker compose -p $PROJECT exec -T localstack awslocal sqs create-queue \
             --queue-name gl_posting.fifo \
             --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
 
       - name: Bring up backend, kratos, functional-test
         working-directory: wonderWhy
         run: |
-          docker compose -p ci up -d backend kratos
-          docker compose -p ci up -d functional-test
+          docker compose -p $PROJECT up -d backend kratos
+          docker compose -p $PROJECT up -d functional-test
 
       - name: Wait for backend
         working-directory: wonderWhy
         run: |
           for i in $(seq 1 60); do
-            code=$(docker compose -p ci exec -T functional-test \
+            code=$(docker compose -p $PROJECT exec -T functional-test \
               curl -s -o /dev/null -w "%{http_code}" http://backend:3000/api/transporter || echo 000)
             case "$code" in
               200|401) echo "Backend ready (HTTP $code)"; exit 0 ;;
@@ -212,8 +240,8 @@ jobs:
       - name: Run API tests
         working-directory: wonderWhy
         run: |
-          docker compose -p ci exec -T functional-test sh -c \
-            "cd /app/functional-test && dart pub get && dart test --concurrency=1 --file-reporter=json:testReports/results.json test/api/"
+          docker compose -p $PROJECT exec -T functional-test sh -c \
+            "cd /app/functional-test && dart pub get && dart test --concurrency=1 --file-reporter=json:testReports/results.json ${{ matrix.targets }}"
 
       # The container writes testReports/ as its own (non-runner) user, so the
       # bind-mounted directory on the host isn't writable by the runner user that
@@ -222,7 +250,7 @@ jobs:
         if: always()
         working-directory: wonderWhy
         run: |
-          docker compose -p ci exec -T functional-test sh -c \
+          docker compose -p $PROJECT exec -T functional-test sh -c \
             "chmod -R a+rwX testReports 2>/dev/null || true"
 
       # continue-on-error: a bug in the report generator must never fail the job —
@@ -238,7 +266,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: functional-test-report
+          name: functional-test-report-${{ matrix.name }}
           path: wonderWhy/functional-test/testReports/report.html
           if-no-files-found: warn
 
@@ -247,26 +275,26 @@ jobs:
         working-directory: wonderWhy
         run: |
           echo "::group::docker compose ps -a"
-          docker compose -p ci ps -a
+          docker compose -p $PROJECT ps -a
           echo "::endgroup::"
 
           for svc in backend kratos db localstack functional-test; do
             echo "::group::docker inspect $svc (state)"
-            docker compose -p ci ps -a --format '{{.Service}}\t{{.State}}\t{{.Status}}' | grep -E "^$svc[[:space:]]" || true
-            cid=$(docker compose -p ci ps -aq "$svc" 2>/dev/null | head -1)
+            docker compose -p $PROJECT ps -a --format '{{.Service}}\t{{.State}}\t{{.Status}}' | grep -E "^$svc[[:space:]]" || true
+            cid=$(docker compose -p $PROJECT ps -aq "$svc" 2>/dev/null | head -1)
             if [ -n "$cid" ]; then
               docker inspect --format 'ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Error={{.State.Error}} Started={{.State.StartedAt}} Finished={{.State.FinishedAt}}' "$cid"
             fi
             echo "::endgroup::"
             echo "::group::logs: $svc (last 200)"
-            docker compose -p ci logs --tail=200 --no-color "$svc" 2>&1 || true
+            docker compose -p $PROJECT logs --tail=200 --no-color "$svc" 2>&1 || true
             echo "::endgroup::"
           done
 
       - name: Tear down
         if: always()
         working-directory: wonderWhy
-        run: docker compose -p ci down -v
+        run: docker compose -p $PROJECT down -v
 
   # Hard gate before prod: the full driver-advance journey (real UI, real backend,
   # offline OCR/HDFC mocks) on the exact commit being promoted. Hangs off lint so it
