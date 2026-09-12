@@ -1,20 +1,29 @@
-# Driver-advance journey E2E against OFFLINE mocks.
+# Driver-advance journey + operations dashboard + vehicle-attendance E2E, run
+# as 3 parallel matrix legs (one per Patrol suite), each against its own
+# isolated docker-compose stack.
 #
-# The whole journey (OCR + HDFC payout) runs without touching a real external
-# provider: a single dummy mock-server container fakes both. See
-# functional-test/mock_server in the wonderWhy repo.
+# The driver-advance leg's journey (OCR + HDFC payout) runs without touching a
+# real external provider: a single dummy mock-server container fakes both. See
+# functional-test/mock_server in the wonderWhy repo. The operations-dashboard
+# and vehicle-attendance legs are read-only UI suites that never touch
+# OCR/HDFC/S3, so they skip that overlay entirely.
 #
 # This workflow lives in the pipelines repo but all the code/compose lives in
 # the wonderWhy monorepo, so it checks THAT out (like 0_web_pipeline.yml does).
 #
-# Two things run against one stack bring-up:
-#   1. GATE (hard pass/fail): `dart test test/mock/` — the HDFC payout through
-#      the real backend adapter -> mock -> CBX reference (mTLS + JOSE). This is
-#      the proven offline-integration proof.
-#   2. Patrol UI journey (blocking): login -> set HDFC secret via UI ->
-#      OCR-upload via UI -> HDFC payout via UI. All four steps are seeded and
-#      exercised end to end (seed_journey.dart now seeds the driver-advance
-#      payable + beneficiary bank account for the payout step).
+# Each leg gets its own compose project (its own db/backend/kratos/nginx), so
+# there's no cross-leg data collision. Before this split, operations_dashboard_test
+# and vehicle_attendance_test had to run strictly sequentially on ONE shared
+# stack, because both seed the same platform_management master tenant and both
+# call the tenant-wide resetTripData() — whichever ran second would wipe the
+# other's trip fixtures mid-run. Isolating each leg on its own stack removes
+# that constraint entirely.
+#
+# The driver-advance leg additionally runs a hard GATE before its Patrol run:
+# `dart test test/mock/` — the HDFC payout through the real backend adapter ->
+# mock -> CBX reference (mTLS + JOSE), the proven offline-integration proof.
+# It only gates the driver-advance leg — with fail-fast off, a GATE failure no
+# longer blocks the other two (unrelated) suites from running.
 
 name: Web E2E Journey (offline mock)
 
@@ -44,12 +53,41 @@ on:
 jobs:
   journey:
     runs-on: ubuntu-latest
-    # Covers two Patrol suites off one bring-up: the driver-advance journey plus
-    # the operations dashboard (its own seed, a ~1min build and a ~40s run).
-    timeout-minutes: 60
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # OCR + HDFC payout through the UI, against the mock overlay.
+          - name: driver_advance
+            target: patrol_test/journey/driver_advance_journey_test.dart
+            report_name: journey-playwright-report
+            seed_cmd: dart run tool/seed_journey.dart
+            seed_marker: "seed-journey] done"
+            needs_mock: true
+          # Read-only dashboard suite: 15 trip variants x 14 summary columns.
+          - name: operations
+            target: patrol_test/journey/operations_dashboard_test.dart
+            report_name: operations-playwright-report
+            seed_cmd: dart run tool/seed_operations.dart
+            seed_marker: "seed-operations] done"
+            needs_mock: false
+          # Read-only dashboard suite: 16 vehicles x a full previous-month status walk.
+          - name: vehicle_attendance
+            target: patrol_test/journey/vehicle_attendance_test.dart
+            report_name: vehicle-attendance-playwright-report
+            seed_cmd: dart run tool/seed_vehicle_attendance.dart
+            seed_marker: "seed-vehicle-attendance] done"
+            needs_mock: false
+    name: Web E2E Journey (${{ matrix.name }})
     env:
-      COMPOSE_FILES: "-f compose.yml -f compose.local.yml -f compose.mock.yml"
-      PROJECT: journey
+      COMPOSE_FILES: >-
+        ${{ matrix.needs_mock && '-f compose.yml -f compose.local.yml -f compose.mock.yml'
+                               || '-f compose.yml -f compose.local.yml' }}
+      # Unique per leg even though each matrix leg already runs on its own
+      # runner VM -- keeps docker compose ps/logs unambiguous and matches the
+      # per-worktree SESSION naming convention already used locally.
+      PROJECT: journey-${{ matrix.name }}
       # compose.local.yml publishes nginx on ${WEB_PORT} and requires it to be set,
       # so that a developer box cannot silently grab the shared host port. A CI
       # runner is single-tenant, so 80 is both free and what the app expects: the
@@ -96,6 +134,7 @@ jobs:
           password: ${{ secrets.GHRC_SECRET_KEY }}
 
       - name: Bring up offline-mock stack
+        if: matrix.needs_mock
         run: |
           docker compose $COMPOSE_FILES -p $PROJECT up -d --wait db localstack mailpit
           docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
@@ -110,6 +149,23 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
             kratos backend mock-server nginx functional-test
 
+      # operations_dashboard_test / vehicle_attendance_test are read-only and
+      # never touch OCR, SurePass or S3 -- same lean stack their own
+      # `make operations-host` / `make vehicle-attendance-host` targets use.
+      - name: Bring up backend stack (no mock overlay)
+        if: ${{ !matrix.needs_mock }}
+        run: |
+          docker compose $COMPOSE_FILES -p $PROJECT up -d --wait db localstack
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name margin
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting_dlq.fifo --attributes FifoQueue=true
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting.fifo \
+            --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
+          docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
+            kratos backend nginx functional-test
+
       # Uses the monorepo's own bin/wait-for-backend.sh (same 90-try poll this
       # step used to inline). REQUIRES the monorepo commit that tracks
       # functional-test/bin/ — before that, bin/ was gitignored, so the file was
@@ -119,29 +175,30 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
             ./bin/wait-for-backend.sh
 
-      # seed_journey.dart commits all its work, prints the completion marker, then
+      # Each seed_*.dart commits all its work, prints the completion marker, then
       # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
       # Stream it, proceed the instant the marker appears, then kill the leftover
       # process. No fixed idle wait; the step's verdict is the marker.
-      - name: Seed journey prerequisites
+      - name: Seed fixtures (${{ matrix.name }})
         run: |
           set +e
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "cd /app/functional-test && dart pub get && dart run tool/seed_journey.dart" \
+            sh -c "cd /app/functional-test && dart pub get && ${{ matrix.seed_cmd }}" \
             > /tmp/seed.log 2>&1 &
           EXEC_PID=$!
           for i in $(seq 1 120); do
-            grep -q "seed-journey] done" /tmp/seed.log && break
+            grep -q "${{ matrix.seed_marker }}" /tmp/seed.log && break
             kill -0 "$EXEC_PID" 2>/dev/null || break
             sleep 2
           done
           cat /tmp/seed.log
           kill "$EXEC_PID" 2>/dev/null
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "pkill -f seed_journey || true" >/dev/null 2>&1
-          grep -q "seed-journey] done" /tmp/seed.log
+            sh -c "pkill -f 'tool/seed_' || true" >/dev/null 2>&1
+          grep -q "${{ matrix.seed_marker }}" /tmp/seed.log
 
       - name: GATE — offline HDFC mock system test
+        if: matrix.name == 'driver_advance'
         run: |
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
             sh -c "cd /app/functional-test && dart test --file-reporter=json:testReports/results.json test/mock/"
@@ -150,22 +207,22 @@ jobs:
       # bind-mounted directory on the host isn't writable by the runner user that
       # the next step runs as. Only the container can fix its own files' perms.
       - name: Fix testReports permissions
-        if: always()
+        if: always() && matrix.name == 'driver_advance'
         run: |
           docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
             sh -c "chmod -R a+rwX /app/functional-test/testReports 2>/dev/null || true"
 
       # continue-on-error: this suite is a small extra on top of the blocking
       # Patrol journey below it — a bug in the report generator must never abort
-      # the job before the actual journey/operations/vehicle-attendance runs.
+      # the job before the actual journey run.
       - name: Generate HDFC mock gate report
-        if: always()
+        if: always() && matrix.name == 'driver_advance'
         continue-on-error: true
         working-directory: functional-test
         run: python3 scripts/gen_test_report.py
 
       - name: Upload HDFC mock gate report
-        if: always()
+        if: always() && matrix.name == 'driver_advance'
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
@@ -183,13 +240,13 @@ jobs:
         timeout-minutes: 10
         run: npx --yes playwright@1.56.0 install --with-deps chromium
 
-      # Blocking: the full journey (login, HDFC secret via UI, OCR upload via UI,
-      # HDFC payout via UI) is seeded and driven end to end. The payout step's
-      # payable + beneficiary are seeded by seed_journey.dart.
+      # Blocking: each leg's own Patrol suite, driven end to end against its own
+      # isolated stack. The payout step's payable + beneficiary (driver_advance
+      # leg only) are seeded by seed_journey.dart.
       # --lang=en-US: headless chromium otherwise exposes an empty/malformed
       # navigator.languages, and Flutter's engine init throws "Incorrect locale
       # information provided" (parseBrowserLanguages) before any test can run.
-      - name: Patrol driver-advance journey (UI)
+      - name: Patrol ${{ matrix.name }} (UI)
         working-directory: flutter/apps/wondermove_web
         env:
           LANG: en_US.UTF-8
@@ -200,148 +257,30 @@ jobs:
           flutter pub get
           export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
           PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
-            --target patrol_test/journey/driver_advance_journey_test.dart \
+            --target ${{ matrix.target }} \
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
             --web-headless true --web-server-timeout 600 \
             --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
             --verbose
 
-      # Uploaded BEFORE the operations suite runs: patrol writes every run to the
-      # same playwright-report directory, so the second run would overwrite this.
       - name: Upload Patrol report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: journey-playwright-report
-          path: flutter/apps/wondermove_web/playwright-report
-          if-no-files-found: ignore
-
-      # ---------------------------------------------------------------------
-      # Operations dashboard suite. Rides this same stack rather than getting its
-      # own workflow: the two seeds cannot collide (seed_journey owns the
-      # `journey_tenant` tenant and TN01MOCK*/TN02MARKET* vehicles; seed_operations
-      # owns the `platform_management` master tenant and TNOPS01-15), so reusing
-      # the bring-up saves a full backend/kratos/nginx build. compose.mock.yml
-      # staying loaded is harmless here — the dashboard is read-only and never
-      # touches OCR, SurePass or S3.
-      #
-
-      # Same stream-and-kill shape as the journey seed: seed_operations.dart
-      # commits its work, prints the marker, then hangs (the Dart VM does not exit).
-      # The step's verdict is the marker, not the exit code.
-      - name: Seed operations fixtures
-        run: |
-          set +e
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "cd /app/functional-test && dart pub get && dart run tool/seed_operations.dart" \
-            > /tmp/seed-operations.log 2>&1 &
-          EXEC_PID=$!
-          for i in $(seq 1 120); do
-            grep -q "seed-operations] done" /tmp/seed-operations.log && break
-            kill -0 "$EXEC_PID" 2>/dev/null || break
-            sleep 2
-          done
-          cat /tmp/seed-operations.log
-          kill "$EXEC_PID" 2>/dev/null
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "pkill -f seed_operations || true" >/dev/null 2>&1
-          grep -q "seed-operations] done" /tmp/seed-operations.log
-
-      # 15 trip variants x 14 summary columns, both KPI strips, the date-range
-      # modes and the branchwise truck status. No sed/pub-get here: the journey
-      # step above already rewrote web/index.html and resolved deps in this job.
-      # --lang=en-US for the same reason as the journey step.
-      - name: Patrol operations dashboard (UI)
-        working-directory: flutter/apps/wondermove_web
-        env:
-          LANG: en_US.UTF-8
-          LANGUAGE: en_US:en
-          LC_ALL: en_US.UTF-8
-        run: |
-          export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
-          PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
-            --target patrol_test/journey/operations_dashboard_test.dart \
-            --web-port 3005 \
-            --dart-define=ENV=local --dart-define=E2E=true \
-            --web-headless true --web-server-timeout 600 \
-            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
-            --verbose
-
-      - name: Upload operations Patrol report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: operations-playwright-report
-          path: flutter/apps/wondermove_web/playwright-report
-          if-no-files-found: ignore
-
-      # THIS SUITE MUST STAY LAST IN THE JOB.
-      #
-      # seed_vehicle_attendance.dart calls resetTripData(), which is TENANT-WIDE:
-      # it deletes every overallTrip, fuel, trip leg, loadingReceipt and
-      # pricePoint on the master tenant -- including the 15 variants the
-      # operations dashboard asserts above. seed_operations.dart does the same in
-      # reverse. The two only coexist because the operations assertions have
-      # already finished by the time this seed runs.
-      #
-      # So: do not insert a step after this one that reads trip data, and do not
-      # reorder. Doing either makes the operations suite fail with numbers that
-      # look like a backend bug rather than a sequencing one.
-      - name: Seed vehicle attendance fixtures
-        run: |
-          set +e
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "cd /app/functional-test && dart run tool/seed_vehicle_attendance.dart" \
-            > /tmp/seed-vehicle-attendance.log 2>&1 &
-          EXEC_PID=$!
-          for i in $(seq 1 120); do
-            grep -q "seed-vehicle-attendance] done" /tmp/seed-vehicle-attendance.log && break
-            kill -0 "$EXEC_PID" 2>/dev/null || break
-            sleep 2
-          done
-          cat /tmp/seed-vehicle-attendance.log
-          kill "$EXEC_PID" 2>/dev/null
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "pkill -f seed_vehicle_attendance || true" >/dev/null 2>&1
-          grep -q "seed-vehicle-attendance] done" /tmp/seed-vehicle-attendance.log
-
-      # 16 vehicles x (today's column + a full previous-month status walk), the
-      # five summary columns and the TOTAL footer. Covers the seam neither the
-      # widget tests nor the API suite reach: a trip created through the real
-      # trip APIs landing in truckStatusHistory and rendering as the right letter
-      # for the right vehicle on the right day, in a browser.
-      #
-      # No sed/pub-get here, same as the operations step: the journey step above
-      # already rewrote web/index.html and resolved deps in this job. No
-      # E2E_ORIGIN either -- WEB_PORT is 80 here, so the app resolves its own
-      # origin from Uri.base.
-      - name: Patrol vehicle attendance (UI)
-        working-directory: flutter/apps/wondermove_web
-        env:
-          LANG: en_US.UTF-8
-          LANGUAGE: en_US:en
-          LC_ALL: en_US.UTF-8
-        run: |
-          export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
-          PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
-            --target patrol_test/journey/vehicle_attendance_test.dart \
-            --web-port 3005 \
-            --dart-define=ENV=local --dart-define=E2E=true \
-            --web-headless true --web-server-timeout 600 \
-            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
-            --verbose
-
-      - name: Upload vehicle attendance Patrol report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: vehicle-attendance-playwright-report
+          name: ${{ matrix.report_name }}
           path: flutter/apps/wondermove_web/playwright-report
           if-no-files-found: ignore
 
       - name: Dump container logs on failure
         if: failure()
         run: |
-          docker compose $COMPOSE_FILES -p $PROJECT logs --tail 300 \
-            backend mock-server nginx kratos || true
+          SERVICES="backend nginx kratos"
+          if [ "${{ matrix.needs_mock }}" = "true" ]; then
+            SERVICES="$SERVICES mock-server"
+          fi
+          docker compose $COMPOSE_FILES -p $PROJECT logs --tail 300 $SERVICES || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose $COMPOSE_FILES -p $PROJECT down -v
