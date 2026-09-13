@@ -13,9 +13,9 @@ on:
         description: 'Which agent to deploy'
         required: true
         type: choice
-        default: geo
+        default: detect-lat-long
         options:
-          - geo
+          - detect-lat-long
 
 jobs:
   find_latest_version:
