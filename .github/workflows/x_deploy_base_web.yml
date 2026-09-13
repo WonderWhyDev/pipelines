@@ -79,15 +79,17 @@ jobs:
         with:
           node-version: "24"
           cache: "yarn"
-          cache-dependency-path: "wonderWhy/yarn.lock"
+          cache-dependency-path: "wonderWhy/web/yarn.lock"
 
+      # web/ is its own standalone yarn project now (the root yarn workspace is
+      # gone; backend/ is installed by bun and is not needed for this build).
       - name: build react web
         run: |
-          cd wonderWhy
+          cd wonderWhy/web
           yarn install
-          yarn workspace web build
-          mkdir webDeploy
-          mv web/dist webDeploy/reactWeb
+          yarn build
+          mkdir ../webDeploy
+          mv dist ../webDeploy/reactWeb
 
       # Sourced from the webAppAssets checkout, not wonderWhy. Lands at the same
       # path with the same contents, so brotli/zip/copy_to_ec2 and the nginx

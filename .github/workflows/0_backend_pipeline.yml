@@ -44,36 +44,44 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '26.8.1'
-          cache: 'yarn'
-          cache-dependency-path: wonderWhy/yarn.lock
-      - working-directory: wonderWhy
+      # Node stays the runtime (vite, vitest, tsc all run on it); bun only
+      # installs. The lockfile is wonderWhy/backend/bun.lock.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('wonderWhy/backend/bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - working-directory: wonderWhy/backend
         run: |
-          yarn install
-          yarn b format
-          yarn b lint
-          yarn b build
-          yarn b checkVersion
-      # Separate step, not folded into `yarn b lint`: that lint sits exactly on its
+          bun install --frozen-lockfile
+          bun run format
+          bun run lint
+          bun run build
+          bun run checkVersion
+      # Separate step, not folded into `bun run lint`: that lint sits exactly on its
       # --max-warnings budget, so a new rule there would fail the budget instead of
       # reporting N+1s. This carries its own budget, which grandfathers the N+1s already
       # in the tree and fails only on a new one. Runs after build so a red build reports
       # first; ~30s.
       - name: N+1 lint
-        working-directory: wonderWhy
-        run: yarn b lint:n-plus-one
+        working-directory: wonderWhy/backend
+        run: bun run lint:n-plus-one
       # Same shape as the N+1 step, and separate for the same reason: its own --max-warnings
       # budget grandfathers the endpoints that already take an id list in the URL and fails only
       # when a new one is added.
       - name: ID-list-in-URL lint
-        working-directory: wonderWhy
-        run: yarn b lint:id-list-query
+        working-directory: wonderWhy/backend
+        run: bun run lint:id-list-query
       # Same shape again: its own --max-warnings budget grandfathers the raw queries already in the
       # tree that lack a tenantId predicate and fails only when a new un-tenanted raw query is added.
       # Raw SQL bypasses the tenant-filter Prisma extension, which is how the tyre report leaked
       # across tenants.
       - name: Tenant-scope (raw query) lint
-        working-directory: wonderWhy
-        run: yarn b lint:tenant-scope
+        working-directory: wonderWhy/backend
+        run: bun run lint:tenant-scope
 
   unit_test:
     needs: find_latest_version
@@ -84,53 +92,53 @@ jobs:
         include:
           # subContracts (split 4 ways by subfolder for runtime, coverage scoped per folder)
           - name: subContracts-controller
-            cmd: 'yarn b test --coverage.include="src/subContracts/controller/**" src/subContracts/controller'
+            cmd: 'bun run test --coverage.include="src/subContracts/controller/**" src/subContracts/controller'
           - name: subContracts-models
-            cmd: 'yarn b test --coverage.include="src/subContracts/models/**" src/subContracts/models'
+            cmd: 'bun run test --coverage.include="src/subContracts/models/**" src/subContracts/models'
           - name: subContracts-domain
-            cmd: 'yarn b test --coverage.include="src/subContracts/domain/**" src/subContracts/domain'
+            cmd: 'bun run test --coverage.include="src/subContracts/domain/**" src/subContracts/domain'
           - name: subContracts-rest
-            cmd: 'yarn b test --coverage.include="src/subContracts/axiosServices/**" --coverage.include="src/subContracts/sqsListners/**" src/subContracts/axiosServices src/subContracts/sqsListners'
+            cmd: 'bun run test --coverage.include="src/subContracts/axiosServices/**" --coverage.include="src/subContracts/sqsListners/**" src/subContracts/axiosServices src/subContracts/sqsListners'
           # accounts (split 2 ways)
           - name: accounts-controller
-            cmd: 'yarn b test --coverage.include="src/accounts/controller/**" src/accounts/controller'
+            cmd: 'bun run test --coverage.include="src/accounts/controller/**" src/accounts/controller'
           - name: accounts-rest
-            cmd: 'yarn b test --coverage.include="src/accounts/models/**" --coverage.include="src/accounts/domain/**" --coverage.include="src/accounts/axiosServices/**" --coverage.include="src/accounts/axiosService/**" src/accounts/models src/accounts/domain src/accounts/axiosServices src/accounts/axiosService'
+            cmd: 'bun run test --coverage.include="src/accounts/models/**" --coverage.include="src/accounts/domain/**" --coverage.include="src/accounts/axiosServices/**" --coverage.include="src/accounts/axiosService/**" src/accounts/models src/accounts/domain src/accounts/axiosServices src/accounts/axiosService'
           # other modules (unchanged)
           - name: bankStatements
-            cmd: 'yarn b test --coverage.include="src/bankStatements/**" src/bankStatements'
+            cmd: 'bun run test --coverage.include="src/bankStatements/**" src/bankStatements'
           - name: commonFunctions
-            cmd: 'yarn b test --coverage.include="src/commonFunctions/**" src/commonFunctions'
+            cmd: 'bun run test --coverage.include="src/commonFunctions/**" src/commonFunctions'
           - name: dataProvider
-            cmd: 'yarn b test --coverage.include="src/dataProvider/**" src/dataProvider'
+            cmd: 'bun run test --coverage.include="src/dataProvider/**" src/dataProvider'
           - name: driverSalary
-            cmd: 'yarn b test --coverage.include="src/driverSalary/**" src/driverSalary'
+            cmd: 'bun run test --coverage.include="src/driverSalary/**" src/driverSalary'
           - name: eInvoice
-            cmd: 'yarn b test --coverage.include="src/eInvoice/**" src/eInvoice'
+            cmd: 'bun run test --coverage.include="src/eInvoice/**" src/eInvoice'
           - name: gstService
-            cmd: 'yarn b test --coverage.include="src/gstService/**" src/gstService'
+            cmd: 'bun run test --coverage.include="src/gstService/**" src/gstService'
           - name: icici
-            cmd: 'yarn b test --coverage.include="src/icici/**" src/icici'
+            cmd: 'bun run test --coverage.include="src/icici/**" src/icici'
           - name: kratos
-            cmd: 'yarn b test --coverage.include="src/kratos/**" src/kratos'
+            cmd: 'bun run test --coverage.include="src/kratos/**" src/kratos'
           - name: logger
-            cmd: 'yarn b test --coverage.include="src/logger/**" src/logger'
+            cmd: 'bun run test --coverage.include="src/logger/**" src/logger'
           - name: make
-            cmd: 'yarn b test --coverage.include="src/make/**" src/make'
+            cmd: 'bun run test --coverage.include="src/make/**" src/make'
           - name: middleware
-            cmd: 'yarn b test --coverage.include="src/middleware/**" src/middleware'
+            cmd: 'bun run test --coverage.include="src/middleware/**" src/middleware'
           - name: ocr
-            cmd: 'yarn b test --coverage.include="src/ocr/**" src/ocr'
+            cmd: 'bun run test --coverage.include="src/ocr/**" src/ocr'
           - name: tenants
-            cmd: 'yarn b test --coverage.include="src/tenants/**" src/tenants'
+            cmd: 'bun run test --coverage.include="src/tenants/**" src/tenants'
           - name: tyre
-            cmd: 'yarn b test --coverage.include="src/tyre/**" src/tyre'
+            cmd: 'bun run test --coverage.include="src/tyre/**" src/tyre'
           - name: vehicleService
-            cmd: 'yarn b test --coverage.include="src/vehicleService/**" src/vehicleService'
+            cmd: 'bun run test --coverage.include="src/vehicleService/**" src/vehicleService'
           - name: whatsapp
-            cmd: 'yarn b test --coverage.include="src/whatsapp/**" src/whatsapp'
+            cmd: 'bun run test --coverage.include="src/whatsapp/**" src/whatsapp'
           - name: root
-            cmd: 'yarn b test --coverage.include="src/*.ts" --project=root'
+            cmd: 'bun run test --coverage.include="src/*.ts" --project=root'
     name: Unit Tests (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v5
@@ -143,11 +151,17 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '26.8.1'
-          cache: 'yarn'
-          cache-dependency-path: wonderWhy/yarn.lock
-      - working-directory: wonderWhy
-        run: yarn install
-      - working-directory: wonderWhy
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('wonderWhy/backend/bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - working-directory: wonderWhy/backend
+        run: bun install --frozen-lockfile
+      - working-directory: wonderWhy/backend
         run: ${{ matrix.cmd }}
 
   functional_test:
@@ -333,13 +347,21 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '26.8.1'
-          cache: 'yarn'
-          cache-dependency-path: 'wonderWhy/yarn.lock'
 
-      - working-directory: wonderWhy
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('wonderWhy/backend/bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - working-directory: wonderWhy/backend
         run: |
-          yarn install --force
-          yarn b build
+          bun install --frozen-lockfile
+          bun run build
 
       - uses: ./.github/actions/upload_version_file
         with:
@@ -356,6 +378,10 @@ jobs:
           cp wonderWhy/backend/dist/app.js backend/
           cp -rf wonderWhy/backend/externalPackages backend/
           cp wonderWhy/backend/package.json backend/
+          # setup.sh runs `bun install --frozen-lockfile --production` on the box,
+          # so the lockfile and the linker config must travel with package.json.
+          cp wonderWhy/backend/bun.lock backend/
+          cp wonderWhy/backend/bunfig.toml backend/
           cp wonderWhy/backend/prisma.config.ts backend/
           cp wonderWhy/backend/deploy/* backend/
 
@@ -448,13 +474,21 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '26.8.1'
-          cache: 'yarn'
-          cache-dependency-path: 'wonderWhy/yarn.lock'
 
-      - working-directory: wonderWhy
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('wonderWhy/backend/bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - working-directory: wonderWhy/backend
         run: |
-          yarn install --force
-          yarn b build
+          bun install --frozen-lockfile
+          bun run build
 
       - uses: ./.github/actions/upload_version_file
         with:
@@ -470,6 +504,10 @@ jobs:
           cp wonderWhy/backend/dist/app.js backend/
           cp -rf wonderWhy/backend/externalPackages backend/
           cp wonderWhy/backend/package.json backend/
+          # setup.sh runs `bun install --frozen-lockfile --production` on the box,
+          # so the lockfile and the linker config must travel with package.json.
+          cp wonderWhy/backend/bun.lock backend/
+          cp wonderWhy/backend/bunfig.toml backend/
           cp wonderWhy/backend/prisma.config.ts backend/
           cp wonderWhy/backend/deploy/* backend/
 
