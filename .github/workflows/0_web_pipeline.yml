@@ -251,11 +251,12 @@ jobs:
           bash coverage.sh --gate-only
 
   # Hard gate before prod: the full driver-advance journey (real UI, real backend,
-  # offline OCR/HDFC mocks) on the exact commit being promoted. Hangs off lint so it
-  # runs in parallel with the unit tests, the coverage gate and the QA deploy; a red
-  # journey blocks deploy_prod (QA still deploys).
+  # offline OCR/HDFC mocks) on the exact commit being promoted. Starts right off
+  # find_latest_version so it runs in parallel with lint, the unit tests, the
+  # coverage gate and the QA deploy — it does not wait for lint; a red journey
+  # blocks deploy_prod (QA still deploys).
   e2e_journey:
-    needs: [find_latest_version, lint]
+    needs: [find_latest_version]
     uses: ./.github/workflows/web_e2e_journey.yml
     with:
       ref: ${{ needs.find_latest_version.outputs.latest_version }}

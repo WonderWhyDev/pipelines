@@ -97,9 +97,10 @@ jobs:
           flutter test
 
   # Android E2E — the driver and operations journeys, on a real emulator,
-  # against OFFLINE mocks. Runs after lint, alongside unit_test. It does NOT gate
-  # the beta deploys (beta ships to testers regardless); it gates the two
-  # production promotions — a red journey blocks promote_android/promote_ios.
+  # against OFFLINE mocks. Starts right off find_latest_version, alongside lint
+  # and unit_test — it does not wait for lint. It does NOT gate the beta deploys
+  # (beta ships to testers regardless); it gates the two production
+  # promotions — a red journey blocks promote_android/promote_ios.
   #
   # Topology: the backend stack runs in docker with nginx published on :80. The
   # emulator runs on the same runner and reaches it through
@@ -123,7 +124,7 @@ jobs:
   # in the web journey — the backend calls them server-side, so the emulator
   # needs no knowledge of them.
   android_e2e:
-    needs: [find_latest_version, lint]
+    needs: [find_latest_version]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:

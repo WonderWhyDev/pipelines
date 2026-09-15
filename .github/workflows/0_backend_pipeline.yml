@@ -294,12 +294,13 @@ jobs:
         run: docker compose -p $PROJECT down -v
 
   # Hard gate before prod: the full driver-advance journey (real UI, real backend,
-  # offline OCR/HDFC mocks) on the exact commit being promoted. Hangs off lint so it
-  # runs in parallel with the unit tests, the functional tests and the QA deploy; a
-  # red journey blocks deploy_prod (QA still deploys). Complements functional_test
+  # offline OCR/HDFC mocks) on the exact commit being promoted. Starts right off
+  # find_latest_version so it runs in parallel with lint, the unit tests, the
+  # functional tests and the QA deploy — it does not wait for lint; a red journey
+  # blocks deploy_prod (QA still deploys). Complements functional_test
   # (test/api/) — this one is test/mock/ plus the Patrol UI flow.
   e2e_journey:
-    needs: [find_latest_version, lint]
+    needs: [find_latest_version]
     uses: ./.github/workflows/web_e2e_journey.yml
     with:
       ref: ${{ needs.find_latest_version.outputs.latest_version }}
