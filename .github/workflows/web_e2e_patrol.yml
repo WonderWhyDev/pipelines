@@ -45,6 +45,9 @@ jobs:
       # runner is single-tenant, so 80 is both free and what the app expects: the
       # Patrol app under --dart-define=E2E=true strips its own port to find nginx.
       WEB_PORT: 80
+      # compose.local.yml also publishes db's port (default 15432) -- functional-test
+      # runs on the runner now (see below) and connects to Postgres directly.
+      DB_PORT: 15432
     steps:
       # The code + compose files live in the wonderWhy monorepo, not here, so
       # check THAT out (a bare checkout left compose.yml absent -> the bring-up
@@ -60,6 +63,9 @@ jobs:
         with:
           flutter-version: "3.47.3"
           channel: stable
+      # Flutter bundles Dart, which is all functional-test (pure Dart, no
+      # Flutter dependency) needs -- it now runs directly on the runner instead
+      # of inside the functional-test container. No separate Dart SDK install.
 
       # Stays on 22 while the rest of CI runs 26.8.1. This runner's node is used
       # for exactly one thing - `npx playwright install` below - and playwright
@@ -78,14 +84,6 @@ jobs:
         # pairs with patrol 4.9.0+, while the older 4.4.0 pin rejects it.
         run: dart pub global activate patrol_cli 4.7.0
 
-      # functional-test image is private on GHCR; the rest are public.
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHRC_SECRET_KEY }}
-
       - name: Bring up backend stack (nginx on :80)
         run: |
           docker compose -f compose.yml -f compose.local.yml -p wonderwhy up -d --wait db localstack mailpit
@@ -96,35 +94,34 @@ jobs:
           docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T localstack \
             awslocal sqs create-queue --queue-name gl_posting.fifo \
             --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
-          docker compose -f compose.yml -f compose.local.yml -p wonderwhy up -d kratos backend nginx functional-test
+          docker compose -f compose.yml -f compose.local.yml -p wonderwhy up -d kratos backend nginx
 
-      # bin/ is gitignored in the monorepo (bin/wait-for-backend.sh + bin/seed.dart
-      # are absent on CI, and the volume mount hides any baked-in copy). Inline the
-      # poll and seed via the tracked tool/seed_journey.dart (a superset seed that
-      # ensures the master tenant + admin and links the kratos identity).
+      # functional-test runs on the runner now (pure Dart -- Flutter's bundled
+      # Dart above is enough), reaching backend/kratos through nginx's WEB_PORT
+      # and `db` through its published DB_PORT, instead of a docker exec into a
+      # functional-test container. Uses the tracked bin/wait-for-backend.sh and
+      # tool/seed_journey.dart (a superset seed that ensures the master tenant +
+      # admin and links the kratos identity).
       - name: Wait for backend
-        run: |
-          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test sh -c '
-            URL="http://backend:3000/api/transporter"
-            echo "Waiting for backend at $URL ..."
-            for i in $(seq 1 90); do
-              code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo 000)
-              case "$code" in 200|401) echo "Backend ready (HTTP $code)"; exit 0;; esac
-              echo "Try $i: backend not ready (HTTP $code)"; sleep 5
-            done
-            echo "Backend did not become ready in time"; exit 1
-          '
+        working-directory: functional-test
+        env:
+          BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
+        run: ./bin/wait-for-backend.sh
 
       # seed_journey.dart commits all its work, prints the completion marker, then
       # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
       # Stream it, proceed the instant the marker appears, then kill the leftover
       # process. No fixed idle wait; the step's verdict is the marker.
       - name: Seed master tenant
+        working-directory: functional-test
+        env:
+          BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
+          KRATOS_ADMIN_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/admin
+          KRATOS_PUBLIC_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/public
+          DB_HOST: localhost
         run: |
           set +e
-          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test \
-            sh -c "cd /app/functional-test && dart pub get && dart run tool/seed_journey.dart" \
-            > /tmp/seed.log 2>&1 &
+          dart pub get && dart run tool/seed_journey.dart > /tmp/seed.log 2>&1 &
           EXEC_PID=$!
           for i in $(seq 1 120); do
             grep -q "seed-journey] done" /tmp/seed.log && break
@@ -133,8 +130,7 @@ jobs:
           done
           cat /tmp/seed.log
           kill "$EXEC_PID" 2>/dev/null
-          docker compose -f compose.yml -f compose.local.yml -p wonderwhy exec -T functional-test \
-            sh -c "pkill -f seed_journey || true" >/dev/null 2>&1
+          pkill -f 'tool/seed_journey' 2>/dev/null || true
           grep -q "seed-journey] done" /tmp/seed.log
 
       # Pin to the Playwright version patrol's web_runner bundles (patrol 4.9.0 ->

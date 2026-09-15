@@ -93,6 +93,9 @@ jobs:
       # runner is single-tenant, so 80 is both free and what the app expects: the
       # Patrol app under --dart-define=E2E=true strips its own port to find nginx.
       WEB_PORT: 80
+      # compose.local.yml also publishes db's port (default 15432) -- functional-test
+      # runs on the runner now (see below) and connects to Postgres directly.
+      DB_PORT: 15432
     steps:
       - name: Checkout wonderWhy (code + compose live here)
         uses: actions/checkout@v5
@@ -107,6 +110,9 @@ jobs:
           flutter-version: "3.47.3"
           channel: stable
           cache: true
+      # Flutter bundles Dart, which is all functional-test (pure Dart, no
+      # Flutter dependency) needs -- it now runs directly on the runner instead
+      # of inside the functional-test container. No separate Dart SDK install.
 
       # Stays on 22 while the rest of CI runs 26.8.1. This runner's node is used
       # for exactly one thing - `npx playwright install` below - and playwright
@@ -125,14 +131,6 @@ jobs:
         # pairs with patrol 4.9.0+, while the older 4.4.0 pin rejects it.
         run: dart pub global activate patrol_cli 4.7.0
 
-      # functional-test image is private on GHCR; the rest are public.
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHRC_SECRET_KEY }}
-
       - name: Bring up offline-mock stack
         if: matrix.needs_mock
         run: |
@@ -147,7 +145,7 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
             awslocal s3 mb s3://localbucket
           docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
-            kratos backend mock-server nginx functional-test
+            kratos backend mock-server nginx
 
       # operations_dashboard_test / vehicle_attendance_test are read-only and
       # never touch OCR, SurePass or S3 -- same lean stack their own
@@ -164,27 +162,32 @@ jobs:
             awslocal sqs create-queue --queue-name gl_posting.fifo \
             --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
           docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
-            kratos backend nginx functional-test
+            kratos backend nginx
 
-      # Uses the monorepo's own bin/wait-for-backend.sh (same 90-try poll this
-      # step used to inline). REQUIRES the monorepo commit that tracks
-      # functional-test/bin/ — before that, bin/ was gitignored, so the file was
-      # absent on CI and the poll had to be duplicated here.
+      # functional-test runs on the runner now (pure Dart -- Flutter's bundled
+      # Dart above is enough), reaching backend/kratos through nginx's WEB_PORT
+      # and `db` through its published DB_PORT, instead of a docker exec into a
+      # functional-test container.
       - name: Wait for backend
-        run: |
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            ./bin/wait-for-backend.sh
+        working-directory: functional-test
+        env:
+          BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
+        run: ./bin/wait-for-backend.sh
 
       # Each seed_*.dart commits all its work, prints the completion marker, then
       # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
       # Stream it, proceed the instant the marker appears, then kill the leftover
       # process. No fixed idle wait; the step's verdict is the marker.
       - name: Seed fixtures (${{ matrix.name }})
+        working-directory: functional-test
+        env:
+          BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
+          KRATOS_ADMIN_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/admin
+          KRATOS_PUBLIC_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/public
+          DB_HOST: localhost
         run: |
           set +e
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "cd /app/functional-test && dart pub get && ${{ matrix.seed_cmd }}" \
-            > /tmp/seed.log 2>&1 &
+          dart pub get && ${{ matrix.seed_cmd }} > /tmp/seed.log 2>&1 &
           EXEC_PID=$!
           for i in $(seq 1 120); do
             grep -q "${{ matrix.seed_marker }}" /tmp/seed.log && break
@@ -193,24 +196,18 @@ jobs:
           done
           cat /tmp/seed.log
           kill "$EXEC_PID" 2>/dev/null
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "pkill -f 'tool/seed_' || true" >/dev/null 2>&1
+          pkill -f 'tool/seed_' 2>/dev/null || true
           grep -q "${{ matrix.seed_marker }}" /tmp/seed.log
 
       - name: GATE — offline HDFC mock system test
         if: matrix.name == 'driver_advance'
-        run: |
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "cd /app/functional-test && dart test --file-reporter=json:testReports/results.json test/mock/"
-
-      # The container writes testReports/ as its own (non-runner) user, so the
-      # bind-mounted directory on the host isn't writable by the runner user that
-      # the next step runs as. Only the container can fix its own files' perms.
-      - name: Fix testReports permissions
-        if: always() && matrix.name == 'driver_advance'
-        run: |
-          docker compose $COMPOSE_FILES -p $PROJECT exec -T functional-test \
-            sh -c "chmod -R a+rwX /app/functional-test/testReports 2>/dev/null || true"
+        working-directory: functional-test
+        env:
+          BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
+          KRATOS_ADMIN_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/admin
+          KRATOS_PUBLIC_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/public
+          DB_HOST: localhost
+        run: dart test --file-reporter=json:testReports/results.json test/mock/
 
       # continue-on-error: this suite is a small extra on top of the blocking
       # Patrol journey below it — a bug in the report generator must never abort
