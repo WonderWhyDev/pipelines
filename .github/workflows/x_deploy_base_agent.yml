@@ -128,10 +128,10 @@ jobs:
           aws lambda invoke \
             --function-name "${{ inputs.functionName }}" \
             --cli-binary-format raw-in-base64-out \
-            --payload fileb://fixtures/smoke/mtps-mettur.json \
+            --payload fileb://fixtures/smoke/${{ inputs.agent }}.json \
             out.json
           cat out.json
-          jq -e '.verdict=="RESOLVED" and .pin!=null' out.json
+          jq -e -f fixtures/smoke/${{ inputs.agent }}.jq out.json
 
       # Only reached once the smoke test above has passed - this is the new
       # "known good" key for the NEXT deploy's rollback step to read back.
