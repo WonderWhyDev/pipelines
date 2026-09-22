@@ -16,6 +16,7 @@ on:
         default: detect-lat-long
         options:
           - detect-lat-long
+          - gps-visits
 
 jobs:
   find_latest_version:
