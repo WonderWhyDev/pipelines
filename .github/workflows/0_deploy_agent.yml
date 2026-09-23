@@ -1,5 +1,5 @@
 name: "0_Deploy_Agent"
-run-name: Deploy_Agent_-_${{ inputs.agent }}_-_${{ inputs.branch || 'main' }}
+run-name: Deploy_Agents_-_${{ inputs.branch || 'main' }}
 
 on:
   workflow_dispatch:
@@ -9,14 +9,6 @@ on:
         required: true
         type: string
         default: main
-      agent:
-        description: 'Which agent to deploy'
-        required: true
-        type: choice
-        default: detect-lat-long
-        options:
-          - detect-lat-long
-          - gps-visits
 
 jobs:
   find_latest_version:
@@ -38,14 +30,20 @@ jobs:
           echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
           echo "Resolved ${{ inputs.branch }} to $latest_version"
 
+  # Every agent deploys on every run. Add a new agent here once its Lambda
+  # exists and it has fixtures/smoke/<agent>.json + .jq.
   deploy_qa:
-    uses: ./.github/workflows/x_deploy_base_agent.yml
     needs: find_latest_version
+    strategy:
+      fail-fast: false
+      matrix:
+        agent: [detect-lat-long, gps-visits]
+    uses: ./.github/workflows/x_deploy_base_agent.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
       environment: qa
-      agent: ${{ inputs.agent }}
-      functionName: wondermove-agent-${{ inputs.agent }}
+      agent: ${{ matrix.agent }}
+      functionName: wondermove-agent-${{ matrix.agent }}
       artifactBucket: test1-v4.wondermove.in
     secrets:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
@@ -53,14 +51,19 @@ jobs:
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
 
+  # Prod starts only when every agent passed QA.
   deploy_prod:
     needs: [find_latest_version, deploy_qa]
+    strategy:
+      fail-fast: false
+      matrix:
+        agent: [detect-lat-long, gps-visits]
     uses: ./.github/workflows/x_deploy_base_agent.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
       environment: magnum
-      agent: ${{ inputs.agent }}
-      functionName: wondermove-agent-${{ inputs.agent }}
+      agent: ${{ matrix.agent }}
+      functionName: wondermove-agent-${{ matrix.agent }}
       artifactBucket: magnum.ap-south-1
     secrets:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
