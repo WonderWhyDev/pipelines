@@ -11,36 +11,80 @@ on:
         default: main
 
 jobs:
-  find_latest_version:
+  # Lint, typecheck and test ONCE. Each deploy below only builds and ships its
+  # agent. No build output is stored as a run artifact (public repo).
+  verify:
     runs-on: ubuntu-latest
     outputs:
-      latest_version: ${{ steps.get_version.outputs.latest_version }}
+      version: ${{ steps.version.outputs.version }}
+      agents: ${{ steps.agents.outputs.agents }}
     steps:
-      - uses: actions/checkout@v5
+      - name: Check out agents/ folder
+        uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy
           token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
           ref: ${{ inputs.branch }}
           fetch-depth: 1
-          sparse-checkout: '.gitignore'
+          sparse-checkout: 'agents'
           sparse-checkout-cone-mode: false
-      - id: get_version
-        run: |
-          latest_version=$(git log -1 --format=%H)
-          echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
-          echo "Resolved ${{ inputs.branch }} to $latest_version"
 
-  # Every agent deploys on every run. Add a new agent here once its Lambda
-  # exists and it has fixtures/smoke/<agent>.json + .jq.
+      - id: version
+        working-directory: wonderWhy
+        run: |
+          version=$(git rev-parse HEAD)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Resolved ${{ inputs.branch }} to $version"
+
+      # The one list of deployed agents. Add a new agent here once its Lambda
+      # exists and it has fixtures/smoke/<agent>.json + .jq.
+      - id: agents
+        run: echo 'agents=["detect-lat-long","gps-visits"]' >> "$GITHUB_OUTPUT"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('wonderWhy/agents/bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        working-directory: wonderWhy/agents
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        working-directory: wonderWhy/agents
+        run: bun run lint
+
+      - name: Typecheck
+        working-directory: wonderWhy/agents
+        run: bunx tsc --noEmit
+
+      - name: Unit + golden tests
+        working-directory: wonderWhy/agents
+        run: bun test
+
+      - name: Every agent has smoke fixtures
+        working-directory: wonderWhy/agents
+        run: |
+          for agent in $(echo '${{ steps.agents.outputs.agents }}' | jq -r '.[]'); do
+            test -f "fixtures/smoke/$agent.json" && test -f "fixtures/smoke/$agent.jq"
+          done
+
   deploy_qa:
-    needs: find_latest_version
+    needs: verify
     strategy:
       fail-fast: false
       matrix:
-        agent: [detect-lat-long, gps-visits]
+        agent: ${{ fromJSON(needs.verify.outputs.agents) }}
     uses: ./.github/workflows/x_deploy_base_agent.yml
     with:
-      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      versionToBuild: ${{ needs.verify.outputs.version }}
       environment: qa
       agent: ${{ matrix.agent }}
       functionName: wondermove-agent-${{ matrix.agent }}
@@ -53,14 +97,14 @@ jobs:
 
   # Prod starts only when every agent passed QA.
   deploy_prod:
-    needs: [find_latest_version, deploy_qa]
+    needs: [verify, deploy_qa]
     strategy:
       fail-fast: false
       matrix:
-        agent: [detect-lat-long, gps-visits]
+        agent: ${{ fromJSON(needs.verify.outputs.agents) }}
     uses: ./.github/workflows/x_deploy_base_agent.yml
     with:
-      versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
+      versionToBuild: ${{ needs.verify.outputs.version }}
       environment: magnum
       agent: ${{ matrix.agent }}
       functionName: wondermove-agent-${{ matrix.agent }}

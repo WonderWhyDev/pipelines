@@ -39,6 +39,8 @@ jobs:
     environment:
       name: ${{ inputs.environment }}
     steps:
+      # Lint, typecheck and tests already ran once in the caller's verify job.
+      # Here we only build this agent from the same commit.
       - name: Check out agents/ folder
         uses: actions/checkout@v5
         with:
@@ -64,18 +66,6 @@ jobs:
       - name: Install dependencies
         working-directory: wonderWhy/agents
         run: bun install --frozen-lockfile
-
-      - name: Lint
-        working-directory: wonderWhy/agents
-        run: bun run lint
-
-      - name: Typecheck
-        working-directory: wonderWhy/agents
-        run: bunx tsc --noEmit
-
-      - name: Unit + golden tests
-        working-directory: wonderWhy/agents
-        run: bun test
 
       - name: Build the agent binary
         working-directory: wonderWhy/agents
