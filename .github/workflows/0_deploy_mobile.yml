@@ -336,10 +336,14 @@ jobs:
           # startApp() also asserts ENV=e2e in-app, so if the defines are ever
           # lost again the suite fails immediately, naming the URL it was about
           # to talk to, instead of quietly hitting a live environment.
+          #
+          # --record-video: one mp4 per test via `adb shell screenrecord`, pulled
+          # into patrol_test/videos/. screenrecord stops itself at 3 minutes;
+          # both tests run well under that (17s and 11s).
           script: |
             adb reverse tcp:8080 tcp:80
             adb shell 'curl -s -o /dev/null -w "nginx from emulator: %{http_code}\n" http://localhost:8080/api/transporter' || true
-            PATROL_ANALYTICS_ENABLED=false patrol test --target patrol_test/journey/driver_test.dart --target patrol_test/journey/operations_test.dart --dart-define=ENV=e2e --verbose
+            PATROL_ANALYTICS_ENABLED=false patrol test --target patrol_test/journey/driver_test.dart --target patrol_test/journey/operations_test.dart --dart-define=ENV=e2e --record-video --verbose
 
       - name: Upload Patrol report
         if: always()
@@ -350,6 +354,16 @@ jobs:
             flutter/apps/wondermove_mobile/build/app/reports
             flutter/apps/wondermove_mobile/build/app/outputs/androidTest-results
           if-no-files-found: ignore
+
+      # A missing video only warns: it is a debugging aid, and this job gates
+      # the production promotions.
+      - name: Upload Patrol video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e-video
+          path: flutter/apps/wondermove_mobile/patrol_test/videos/*.mp4
+          if-no-files-found: warn
 
       # --since 10m, not --tail: the emulator build+run takes ~10 minutes, so a
       # fixed tail is all seed-time noise and cuts off exactly the window the

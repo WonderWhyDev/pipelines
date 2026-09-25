@@ -57,6 +57,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # video: Playwright recording mode per leg, uploaded as <name>-video.
+        # off | on | retain-on-failure | on-first-retry. Quoted so YAML never
+        # reads on/off as booleans.
         include:
           # OCR + HDFC payout through the UI, against the mock overlay.
           - name: driver_advance
@@ -65,7 +68,7 @@ jobs:
             seed_cmd: dart run tool/seed_journey.dart
             seed_marker: "seed-journey] done"
             needs_mock: true
-            video: "off"
+            video: "on"
           # Read-only dashboard suite: 15 trip variants x 14 summary columns.
           - name: operations
             target: patrol_test/journey/operations_dashboard_test.dart
@@ -73,9 +76,6 @@ jobs:
             seed_cmd: dart run tool/seed_operations.dart
             seed_marker: "seed-operations] done"
             needs_mock: false
-            # The one leg that records: a webm per test, uploaded as
-            # operations-video. Modes: off | on | retain-on-failure | on-first-retry.
-            # Quoted so YAML never reads on/off as booleans.
             video: "on"
           # Read-only dashboard suite: 16 vehicles x a full previous-month status walk.
           - name: vehicle_attendance
@@ -84,7 +84,7 @@ jobs:
             seed_cmd: dart run tool/seed_vehicle_attendance.dart
             seed_marker: "seed-vehicle-attendance] done"
             needs_mock: false
-            video: "off"
+            video: "on"
     name: Web E2E Journey (${{ matrix.name }})
     env:
       COMPOSE_FILES: >-
@@ -252,6 +252,9 @@ jobs:
       # --web-results-dir must be absolute: patrol hands it to Playwright as is,
       # and Playwright resolves a relative path against its own config dir inside
       # the pub cache, where the video upload below would never find it.
+      # --web-timeout is Playwright's per-test cap, 10 min by default. Every file
+      # here is ONE Patrol test, and driver_advance's already ran 9m39s without
+      # video, so recording would push it over. 20 min, still inside the job's 40.
       - name: Patrol ${{ matrix.name }} (UI)
         working-directory: flutter/apps/wondermove_web
         env:
@@ -268,6 +271,7 @@ jobs:
             --dart-define=ENV=local --dart-define=E2E=true \
             --web-headless true --web-server-timeout 600 \
             --web-video ${{ matrix.video }} --web-results-dir "$PWD/test-results" \
+            --web-timeout 1200000 \
             --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
             --verbose
 
