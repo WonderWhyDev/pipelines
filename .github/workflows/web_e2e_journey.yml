@@ -65,6 +65,7 @@ jobs:
             seed_cmd: dart run tool/seed_journey.dart
             seed_marker: "seed-journey] done"
             needs_mock: true
+            video: "off"
           # Read-only dashboard suite: 15 trip variants x 14 summary columns.
           - name: operations
             target: patrol_test/journey/operations_dashboard_test.dart
@@ -72,6 +73,10 @@ jobs:
             seed_cmd: dart run tool/seed_operations.dart
             seed_marker: "seed-operations] done"
             needs_mock: false
+            # The one leg that records: a webm per test, uploaded as
+            # operations-video. Modes: off | on | retain-on-failure | on-first-retry.
+            # Quoted so YAML never reads on/off as booleans.
+            video: "on"
           # Read-only dashboard suite: 16 vehicles x a full previous-month status walk.
           - name: vehicle_attendance
             target: patrol_test/journey/vehicle_attendance_test.dart
@@ -79,6 +84,7 @@ jobs:
             seed_cmd: dart run tool/seed_vehicle_attendance.dart
             seed_marker: "seed-vehicle-attendance] done"
             needs_mock: false
+            video: "off"
     name: Web E2E Journey (${{ matrix.name }})
     env:
       COMPOSE_FILES: >-
@@ -243,6 +249,9 @@ jobs:
       # --lang=en-US: headless chromium otherwise exposes an empty/malformed
       # navigator.languages, and Flutter's engine init throws "Incorrect locale
       # information provided" (parseBrowserLanguages) before any test can run.
+      # --web-results-dir must be absolute: patrol hands it to Playwright as is,
+      # and Playwright resolves a relative path against its own config dir inside
+      # the pub cache, where the video upload below would never find it.
       - name: Patrol ${{ matrix.name }} (UI)
         working-directory: flutter/apps/wondermove_web
         env:
@@ -258,6 +267,7 @@ jobs:
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
             --web-headless true --web-server-timeout 600 \
+            --web-video ${{ matrix.video }} --web-results-dir "$PWD/test-results" \
             --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
             --verbose
 
@@ -268,6 +278,16 @@ jobs:
           name: ${{ matrix.report_name }}
           path: flutter/apps/wondermove_web/playwright-report
           if-no-files-found: ignore
+
+      # One video.webm per Patrol test, under test-results/<test>/. A missing
+      # video only warns: it is a debugging aid, and this job gates deploy_prod.
+      - name: Upload Patrol video
+        if: always() && matrix.video != 'off'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-video
+          path: flutter/apps/wondermove_web/test-results/**/*.webm
+          if-no-files-found: warn
 
       - name: Dump container logs on failure
         if: failure()
