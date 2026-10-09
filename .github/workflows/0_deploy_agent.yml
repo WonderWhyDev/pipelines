@@ -88,7 +88,7 @@ jobs:
       environment: qa
       agent: ${{ matrix.agent }}
       functionName: wondermove-agent-${{ matrix.agent }}
-      artifactBucket: test1-v4.wondermove.in
+      artifactBucket: test1-v5.wondermove.in
     secrets:
       REPO_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
       AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
