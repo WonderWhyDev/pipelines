@@ -1,0 +1,190 @@
+# Wonder Tally Sync: the Windows desktop app that posts WonderMove vouchers to
+# Tally (wonderWhy: flutter/apps/wonder_tally_sync).
+#
+# Lint and the widget tests run on Linux. The UI test and the build need
+# Windows: Flutter cannot cross-build a desktop app.
+#
+# The UI test launches the real app. It starts the mock wondermove and Tally
+# servers inside its own process (flutter/packages/mock_servers) and checks the
+# calls they received, so it needs no backend stack and no docker.
+#
+# Output: a workflow artifact holding the release folder. Unzip it on a Windows
+# PC and run wonder_tally_sync.exe. Nothing is deployed or published.
+
+name: "0_Tally_Sync_Pipeline"
+run-name: Tally_Sync_Pipeline_-_${{ inputs.branch || 'main' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'wonderWhy branch to build/test'
+        required: true
+        type: string
+        default: main
+      env:
+        description: 'Server the built app talks to'
+        required: true
+        type: choice
+        options:
+          - test
+          - production
+        default: test
+
+jobs:
+  find_latest_version:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_version: ${{ steps.get_version.outputs.latest_version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.branch || 'main' }}
+          fetch-depth: 1
+          sparse-checkout: '.gitignore'
+          sparse-checkout-cone-mode: false
+      - id: get_version
+        run: |
+          latest_version=$(git log -1 --format=%H)
+          echo "latest_version=$latest_version" >> "$GITHUB_OUTPUT"
+          echo "Resolved ${{ inputs.branch || 'main' }} to $latest_version"
+
+  lint:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    name: Lint
+    steps:
+      # Only the Flutter packages and this app: the rest of the monorepo is not
+      # needed, and the Windows job below must not check it out at all.
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+          sparse-checkout: |
+            flutter/packages
+            flutter/apps/wonder_tally_sync
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.3
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          cd flutter/packages/mock_servers && dart pub get
+          cd ../../apps/wonder_tally_sync && flutter pub get
+
+      - name: Check formatting
+        run: |
+          cd flutter
+          dart format --output=none --set-exit-if-changed apps/wonder_tally_sync packages/mock_servers
+
+      - name: Analyze
+        run: |
+          cd flutter/packages/mock_servers && dart analyze --fatal-infos
+          cd ../../apps/wonder_tally_sync && flutter analyze
+
+      - name: Check test mocking (HTTP-level only, no state-level mocks)
+        run: |
+          cd flutter/packages/test_lints && dart pub get
+          dart run bin/check.dart ../../apps/wonder_tally_sync/test
+
+  unit_test:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    name: Unit Test
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+          sparse-checkout: |
+            flutter/packages
+            flutter/apps/wonder_tally_sync
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.3
+          cache: true
+
+      - name: Mock server tests
+        run: |
+          cd flutter/packages/mock_servers
+          dart pub get
+          dart test
+
+      - name: Widget tests
+        run: |
+          cd flutter/apps/wonder_tally_sync
+          flutter pub get
+          flutter test
+
+  windows_ui_test_and_build:
+    needs: find_latest_version
+    runs-on: windows-latest
+    timeout-minutes: 45
+    name: UI Test and Build (Windows)
+    steps:
+      # Pub cache and build paths go past Windows' 260 character limit.
+      - name: Allow long paths
+        run: git config --global core.longpaths true
+
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+          sparse-checkout: |
+            flutter/packages
+            flutter/apps/wonder_tally_sync
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.3
+          cache: true
+
+      - name: Install dependencies
+        working-directory: flutter/apps/wonder_tally_sync
+        run: flutter pub get
+
+      # Builds the debug app, launches it, and drives the login flow against
+      # the mock servers the test starts.
+      - name: UI test
+        working-directory: flutter/apps/wonder_tally_sync
+        run: flutter test integration_test -d windows
+
+      - name: Build release
+        working-directory: flutter/apps/wonder_tally_sync
+        env:
+          APP_ENV: ${{ inputs.env }}
+        run: flutter build windows --release --dart-define=ENV=$env:APP_ENV
+
+      # A PC without the Visual C++ redistributable cannot start the app unless
+      # these three DLLs sit next to the exe (Flutter's Windows deployment docs).
+      - name: Add the Visual C++ runtime
+        working-directory: flutter/apps/wonder_tally_sync
+        run: |
+          $release = "build\windows\x64\runner\Release"
+          foreach ($dll in "msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll") {
+            Copy-Item "C:\Windows\System32\$dll" $release
+          }
+
+      - name: Upload the app
+        uses: actions/upload-artifact@v4
+        with:
+          name: wonder_tally_sync-windows-x64-${{ inputs.env }}
+          path: flutter/apps/wonder_tally_sync/build/windows/x64/runner/Release
+          if-no-files-found: error
