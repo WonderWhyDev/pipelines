@@ -82,6 +82,12 @@ jobs:
       - name: Tenant-scope (raw query) lint
         working-directory: wonderWhy/backend
         run: bun run lint:tenant-scope
+      # Zero budget: a $transaction([...]) batch whose length depends on data (rows.map(...), a spread,
+      # an array pushed to in a loop) gets a new ~6 MB cached query plan on every run in Prisma 7.10.
+      # That leaked the prod backend heap to its cap; use an interactive transaction instead.
+      - name: Data-sized $transaction batch lint
+        working-directory: wonderWhy/backend
+        run: bun run lint:transaction-batch
 
   unit_test:
     needs: find_latest_version
