@@ -170,6 +170,57 @@ jobs:
       - working-directory: wonderWhy/backend
         run: ${{ matrix.cmd }}
 
+  # Real routes, controllers, models and a real Postgres; only other systems are mocked.
+  # Every test deletes all rows, so this job owns a throwaway database. The image matches
+  # the db service in wonderWhy/compose.yml. INTEGRATION_TESTS turns the vitest
+  # `integration` project on: without it the project does not exist, because the unit
+  # test jobs above (and the commit hook) have no Postgres.
+  integration_test:
+    needs: find_latest_version
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    name: Integration Tests
+    services:
+      postgres:
+        image: postgres:18.1-alpine3.23
+        env:
+          POSTGRES_PASSWORD: chumma
+          POSTGRES_DB: wonderwhytest
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:chumma@localhost:5432/wonderwhytest
+      INTEGRATION_TESTS: 'true'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          path: wonderWhy
+          fetch-depth: 1
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '26.8.1'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('wonderWhy/backend/bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - working-directory: wonderWhy/backend
+        run: bun install --frozen-lockfile
+      # globalSetup runs `prisma migrate deploy` on the empty database before the first test
+      - working-directory: wonderWhy/backend
+        run: bun run trun --project integration
+
   functional_test:
     needs: find_latest_version
     runs-on: ubuntu-latest
@@ -316,7 +367,7 @@ jobs:
 
   deploy_qa:
     runs-on: ubuntu-latest
-    needs: [find_latest_version, lint, unit_test, functional_test]
+    needs: [find_latest_version, lint, unit_test, integration_test, functional_test]
     outputs:
       latest_version: ${{ needs.find_latest_version.outputs.latest_version }}
     environment:
