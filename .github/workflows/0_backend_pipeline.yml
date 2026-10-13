@@ -88,6 +88,20 @@ jobs:
       - name: Data-sized $transaction batch lint
         working-directory: wonderWhy/backend
         run: bun run lint:transaction-batch
+      # Same ratchet shape: its own --max-warnings budget grandfathers the raw 19800 offsets,
+      # unzoned dayjs calendar math and hand-rolled time zone conversions already in the tree, and
+      # fails only when a new one is added outside the istTime helpers. Every dev machine and phone
+      # is in IST, so a wrong offset looks right locally; this is the check that does not depend on
+      # the zone. See docs/epoch/convention.md.
+      - name: Epoch / time zone lint
+        working-directory: wonderWhy/backend
+        run: bun run lint:epoch
+      # Dates are stored as Int epoch seconds. The DateTime columns that already exist are named in
+      # backend/prisma/epoch-column-debt.txt (createdAt / updatedAt are exempt for now); a new
+      # DateTime column fails here by name. The list may only shrink.
+      - name: Epoch-only date columns (Prisma schema)
+        working-directory: wonderWhy/backend
+        run: bun run lint:epoch-columns
 
   unit_test:
     needs: find_latest_version

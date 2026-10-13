@@ -104,6 +104,27 @@ jobs:
             echo "No page_chrome_baseline.txt for ${{ matrix.app }} — skipping."
           fi
 
+      # Epoch / time zone rules (docs/epoch/convention.md). Same package as the
+      # two checks above, pointed at lib/.
+      #
+      # A picked date becomes an epoch only through dateTimeToIstEpoch, and an
+      # epoch becomes a date only through the date_utils helpers. Raw
+      # millisecondsSinceEpoch / fromMillisecondsSinceEpoch use the device zone,
+      # which only looks right because every device is in IST.
+      #
+      # Gated by a committed per-file baseline that may only shrink, so existing
+      # conversions do not block CI but a new one fails and names the line.
+      #
+      # Regenerate after a burn-down:
+      #   cd flutter/apps/<app>
+      #   dart run ../../packages/test_lints/bin/epoch_check.dart \
+      #     lib --baseline epoch_baseline.txt --write-baseline
+      - name: Check epoch / time zone rules
+        run: |
+          cd flutter/apps/${{ matrix.app }}
+          dart run ../../packages/test_lints/bin/epoch_check.dart \
+            lib --baseline epoch_baseline.txt
+
   unit_test:
     needs: find_latest_version
     runs-on: ubuntu-latest

@@ -95,6 +95,14 @@ jobs:
           cd flutter/packages/test_lints && dart pub get
           dart run bin/check.dart ../../apps/wonder_tally_sync/test
 
+      # Epoch / time zone rules (docs/epoch/convention.md). Per-file baseline
+      # that may only shrink; a new raw conversion fails and names the line.
+      - name: Check epoch / time zone rules
+        run: |
+          cd flutter/apps/wonder_tally_sync
+          dart run ../../packages/test_lints/bin/epoch_check.dart \
+            lib --baseline epoch_baseline.txt
+
   unit_test:
     needs: find_latest_version
     runs-on: ubuntu-latest
