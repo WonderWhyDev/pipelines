@@ -1,12 +1,14 @@
-# Driver-advance journey + operations dashboard + vehicle-attendance E2E, run
-# as 3 parallel matrix legs (one per Patrol suite), each against its own
-# isolated docker-compose stack.
+# Driver-advance journey + operations dashboard + vehicle-attendance + No Driver
+# E2E, run as 4 parallel matrix legs (one per Patrol suite), each against its
+# own isolated docker-compose stack.
 #
 # The driver-advance leg's journey (OCR + HDFC payout) runs without touching a
 # real external provider: a single dummy mock-server container fakes both. See
 # functional-test/mock_server in the wonderWhy repo. The operations-dashboard
-# and vehicle-attendance legs are read-only UI suites that never touch
-# OCR/HDFC/S3, so they skip that overlay entirely.
+# and vehicle-attendance legs are read-only UI suites, and the No Driver leg
+# (Mark No Driver, Assign Driver, pre-trip advance, retire) writes only through
+# the backend; none of the three touches OCR/HDFC/S3, so they skip that overlay
+# entirely.
 #
 # This workflow lives in the pipelines repo but all the code/compose lives in
 # the wonderWhy monorepo, so it checks THAT out (like 0_web_pipeline.yml does).
@@ -85,6 +87,15 @@ jobs:
             seed_marker: "seed-vehicle-attendance] done"
             needs_mock: false
             video: "on"
+          # The whole No Driver feature through the UI: 13 layers over 14 seeded
+          # trucks (Mark No Driver, Assign Driver, pre-trip advance, retire).
+          - name: no_driver
+            target: patrol_test/journey/no_driver_test.dart
+            report_name: no-driver-playwright-report
+            seed_cmd: dart run tool/seed_no_driver.dart
+            seed_marker: "seed-no-driver] done"
+            needs_mock: false
+            video: "on"
     name: Web E2E Journey (${{ matrix.name }})
     env:
       COMPOSE_FILES: >-
@@ -153,9 +164,10 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
             kratos backend mock-server nginx
 
-      # operations_dashboard_test / vehicle_attendance_test are read-only and
-      # never touch OCR, SurePass or S3 -- same lean stack their own
-      # `make operations-host` / `make vehicle-attendance-host` targets use.
+      # operations_dashboard_test / vehicle_attendance_test / no_driver_test never
+      # touch OCR, SurePass or S3 -- same lean stack their own
+      # `make operations-host` / `make vehicle-attendance-host` /
+      # `make no-driver-host` targets use.
       - name: Bring up backend stack (no mock overlay)
         if: ${{ !matrix.needs_mock }}
         run: |
@@ -179,6 +191,13 @@ jobs:
         env:
           BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
         run: ./bin/wait-for-backend.sh
+
+      # The No Driver seed names its trucks and drivers after ND_RUN (the run's
+      # start epoch, not a counter: the seed dates its trips from it) and the
+      # Patrol test rebuilds the same names from it, so both read this one value.
+      # The other legs ignore it.
+      - name: Fix the run id (ND_RUN)
+        run: echo "ND_RUN=$(date +%s)" >> "$GITHUB_ENV"
 
       # Each seed_*.dart commits all its work, prints the completion marker, then
       # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
@@ -269,6 +288,7 @@ jobs:
             --target ${{ matrix.target }} \
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
+            "--dart-define=ND_RUN=$ND_RUN" \
             --web-headless true --web-server-timeout 600 \
             --web-video ${{ matrix.video }} --web-results-dir "$PWD/test-results" \
             --web-timeout 1200000 \
