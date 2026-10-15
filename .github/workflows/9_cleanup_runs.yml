@@ -1,0 +1,56 @@
+name: "9_Cleanup_Runs"
+run-name: Cleanup_Workflow_Runs
+
+# Per workflow: always keep the latest keep_minimum_runs SUCCESSFUL runs, and
+# delete every other completed run older than retain_days.
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      retain_days:
+        description: "Delete runs older than this many days"
+        default: "30"
+      keep_minimum_runs:
+        description: "Always keep this many latest successful runs per workflow"
+        default: "10"
+      dry_run:
+        description: "List only, delete nothing"
+        type: boolean
+        default: true
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      RETAIN_DAYS: ${{ inputs.retain_days || '30' }}
+      KEEP_MIN: ${{ inputs.keep_minimum_runs || '10' }}
+      # Scheduled runs delete for real; manual runs default to a dry run.
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+    steps:
+      - name: Delete old runs, keep latest successes
+        run: |
+          cutoff=$(date -u -d "-${RETAIN_DAYS} days" +%Y-%m-%dT%H:%M:%SZ)
+          echo "cutoff=$cutoff keep_min=$KEEP_MIN dry_run=$DRY_RUN"
+          for wf in $(gh api --paginate "repos/$REPO/actions/workflows?per_page=100" --jq '.workflows[].id'); do
+            runs=$(gh api --paginate "repos/$REPO/actions/workflows/$wf/runs?per_page=100" \
+              --jq '.workflow_runs[] | select(.status=="completed") | [.id, .conclusion, .created_at] | @tsv' \
+              | sort -t$'\t' -k3,3r)
+            keep=$(echo "$runs" | awk -F'\t' '$2=="success"{print $1}' | head -n "$KEEP_MIN")
+            echo "$runs" | while IFS=$'\t' read -r id conclusion created; do
+              [ -z "$id" ] && continue
+              [[ "$created" > "$cutoff" ]] && continue
+              echo "$keep" | grep -qx "$id" && continue
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "would delete workflow=$wf run=$id ($conclusion, $created)"
+              else
+                gh api -X DELETE "repos/$REPO/actions/runs/$id" && echo "deleted run=$id"
+              fi
+            done
+          done
