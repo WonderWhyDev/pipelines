@@ -1,6 +1,6 @@
 # Driver-advance journey + operations dashboard + vehicle-attendance + No Driver
-# E2E, run as 4 parallel matrix legs (one per Patrol suite), each against its
-# own isolated docker-compose stack.
+# + WonderMake E2E, run as 5 parallel matrix legs (one per Patrol suite), each
+# against its own isolated docker-compose stack.
 #
 # The driver-advance leg's journey (OCR + HDFC payout) runs without touching a
 # real external provider: a single dummy mock-server container fakes both. See
@@ -96,6 +96,21 @@ jobs:
             seed_marker: "seed-no-driver] done"
             needs_mock: false
             video: "on"
+          # WonderMake (stock issue) web app: every file under its patrol_test.
+          # The tests fake the Bluetooth scale (Web Serial), the file chooser and
+          # the S3 photo PUT inside the browser, so no mock overlay. The browser
+          # runs on IST, like the people issuing stock. Many short tests, so
+          # video only for the ones that fail.
+          - name: wondermake
+            app_dir: flutter/apps/wondermake_web
+            base_href: /make/
+            target: patrol_test
+            report_name: wondermake-playwright-report
+            seed_cmd: dart run tool/seed_make.dart
+            seed_marker: "seed-make] done"
+            needs_mock: false
+            video: "retain-on-failure"
+            extra_args: --web-timezone Asia/Kolkata
     name: Web E2E Journey (${{ matrix.name }})
     env:
       COMPOSE_FILES: >-
@@ -195,9 +210,13 @@ jobs:
       # The No Driver seed names its trucks and drivers after ND_RUN (the run's
       # start epoch, not a counter: the seed dates its trips from it) and the
       # Patrol test rebuilds the same names from it, so both read this one value.
-      # The other legs ignore it.
-      - name: Fix the run id (ND_RUN)
-        run: echo "ND_RUN=$(date +%s)" >> "$GITHUB_ENV"
+      # MK_RUN does the same for the WonderMake items, teams and projects. The
+      # other legs ignore both.
+      - name: Fix the run id (ND_RUN, MK_RUN)
+        run: |
+          RUN=$(date +%s)
+          echo "ND_RUN=$RUN" >> "$GITHUB_ENV"
+          echo "MK_RUN=$RUN" >> "$GITHUB_ENV"
 
       # Each seed_*.dart commits all its work, prints the completion marker, then
       # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
@@ -274,24 +293,27 @@ jobs:
       # --web-timeout is Playwright's per-test cap, 10 min by default. Every file
       # here is ONE Patrol test, and driver_advance's already ran 9m39s without
       # video, so recording would push it over. 20 min, still inside the job's 40.
+      # app_dir / base_href default to wondermove_web, which prod serves at /new/;
+      # the wondermake leg overrides both (prod serves it at /make/).
       - name: Patrol ${{ matrix.name }} (UI)
-        working-directory: flutter/apps/wondermove_web
+        working-directory: ${{ matrix.app_dir || 'flutter/apps/wondermove_web' }}
         env:
           LANG: en_US.UTF-8
           LANGUAGE: en_US:en
           LC_ALL: en_US.UTF-8
         run: |
-          sed -i 's#<base href="/new/">#<base href="/">#' web/index.html
+          sed -i 's#<base href="${{ matrix.base_href || '/new/' }}">#<base href="/">#' web/index.html
           flutter pub get
           export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
           PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
             --target ${{ matrix.target }} \
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
-            "--dart-define=ND_RUN=$ND_RUN" \
+            "--dart-define=ND_RUN=$ND_RUN" "--dart-define=MK_RUN=$MK_RUN" \
             --web-headless true --web-server-timeout 600 \
             --web-video ${{ matrix.video }} --web-results-dir "$PWD/test-results" \
             --web-timeout 1200000 \
+            ${{ matrix.extra_args }} \
             --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
             --verbose
 
@@ -300,7 +322,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.report_name }}
-          path: flutter/apps/wondermove_web/playwright-report
+          path: ${{ matrix.app_dir || 'flutter/apps/wondermove_web' }}/playwright-report
           if-no-files-found: ignore
 
       # One video.webm per Patrol test, under test-results/<test>/. A missing
@@ -310,7 +332,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-video
-          path: flutter/apps/wondermove_web/test-results/**/*.webm
+          path: ${{ matrix.app_dir || 'flutter/apps/wondermove_web' }}/test-results/**/*.webm
           if-no-files-found: warn
 
       - name: Dump container logs on failure
