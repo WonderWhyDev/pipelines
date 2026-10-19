@@ -4,7 +4,8 @@
 #
 # The driver-advance leg's journey (OCR + HDFC payout) runs without touching a
 # real external provider: a single dummy mock-server container fakes both. See
-# functional-test/mock_server in the wonderWhy repo. The operations-dashboard
+# functional-test/mock_server in the wonderWhy repo. The WonderMake leg uses the
+# same overlay for its delivery-bill OCR. The operations-dashboard
 # and vehicle-attendance legs are read-only UI suites, and the No Driver leg
 # (Mark No Driver, Assign Driver, pre-trip advance, retire) writes only through
 # the backend; none of the three touches OCR/HDFC/S3, so they skip that overlay
@@ -96,11 +97,13 @@ jobs:
             seed_marker: "seed-no-driver] done"
             needs_mock: false
             video: "on"
-          # WonderMake (stock issue) web app: every file under its patrol_test.
-          # The tests fake the Bluetooth scale (Web Serial), the file chooser and
-          # the S3 photo PUT inside the browser, so no mock overlay. The browser
-          # runs on IST, like the people issuing stock. Many short tests, so
-          # video only for the ones that fail.
+          # WonderMake (stock issue and delivery-bill inbound) web app: every
+          # file under its patrol_test. The tests fake the Bluetooth scale (Web
+          # Serial), the file chooser and the S3 photo PUT inside the browser.
+          # Scanning a delivery bill goes through the backend's OCR, so the
+          # mock overlay (OCR mock + S3 bucket) is on. The browser runs on IST,
+          # like the people issuing stock. Many short tests, so video only for
+          # the ones that fail.
           - name: wondermake
             app_dir: flutter/apps/wondermake_web
             base_href: /make/
@@ -108,7 +111,7 @@ jobs:
             report_name: wondermake-playwright-report
             seed_cmd: dart run tool/seed_make.dart
             seed_marker: "seed-make] done"
-            needs_mock: false
+            needs_mock: true
             video: "retain-on-failure"
             extra_args: --web-timezone Asia/Kolkata
     name: Web E2E Journey (${{ matrix.name }})
