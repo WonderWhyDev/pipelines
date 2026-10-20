@@ -1,15 +1,15 @@
 # Driver-advance journey + operations dashboard + vehicle-attendance + No Driver
-# + WonderMake E2E, run as 5 parallel matrix legs (one per Patrol suite), each
-# against its own isolated docker-compose stack.
+# + trading + WonderMake E2E, run as 6 parallel matrix legs (one per Patrol
+# suite), each against its own isolated docker-compose stack.
 #
 # The driver-advance leg's journey (OCR + HDFC payout) runs without touching a
 # real external provider: a single dummy mock-server container fakes both. See
 # functional-test/mock_server in the wonderWhy repo. The WonderMake leg uses the
 # same overlay for its delivery-bill OCR. The operations-dashboard
 # and vehicle-attendance legs are read-only UI suites, and the No Driver leg
-# (Mark No Driver, Assign Driver, pre-trip advance, retire) writes only through
-# the backend; none of the three touches OCR/HDFC/S3, so they skip that overlay
-# entirely.
+# (Mark No Driver, Assign Driver, pre-trip advance, retire) and the trading leg
+# (sales bills and their trips) write only through the backend; none of the four
+# touches OCR/HDFC/S3/GSTZen, so they skip that overlay entirely.
 #
 # This workflow lives in the pipelines repo but all the code/compose lives in
 # the wonderWhy monorepo, so it checks THAT out (like 0_web_pipeline.yml does).
@@ -97,6 +97,16 @@ jobs:
             seed_marker: "seed-no-driver] done"
             needs_mock: false
             video: "on"
+          # The trading module through the UI: masters, settings, two sales
+          # bills and their trips (issue, edit, cancel, trip retry). The seeded
+          # firm has e-invoice off, so nothing reaches GSTZen.
+          - name: trading
+            target: patrol_test/journey/trading_test.dart
+            report_name: trading-playwright-report
+            seed_cmd: dart run tool/seed_trading.dart
+            seed_marker: "seed-trading] done"
+            needs_mock: false
+            video: "on"
           # WonderMake (stock issue and delivery-bill inbound) web app: every
           # file under its patrol_test. The tests fake the Bluetooth scale (Web
           # Serial), the file chooser and the S3 photo PUT inside the browser.
@@ -182,10 +192,10 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
             kratos backend mock-server nginx
 
-      # operations_dashboard_test / vehicle_attendance_test / no_driver_test never
-      # touch OCR, SurePass or S3 -- same lean stack their own
+      # operations_dashboard_test / vehicle_attendance_test / no_driver_test /
+      # trading_test never touch OCR, SurePass or S3 -- same lean stack their own
       # `make operations-host` / `make vehicle-attendance-host` /
-      # `make no-driver-host` targets use.
+      # `make no-driver-host` / `make trading-host` targets use.
       - name: Bring up backend stack (no mock overlay)
         if: ${{ !matrix.needs_mock }}
         run: |
@@ -213,13 +223,15 @@ jobs:
       # The No Driver seed names its trucks and drivers after ND_RUN (the run's
       # start epoch, not a counter: the seed dates its trips from it) and the
       # Patrol test rebuilds the same names from it, so both read this one value.
-      # MK_RUN does the same for the WonderMake items, teams and projects. The
-      # other legs ignore both.
-      - name: Fix the run id (ND_RUN, MK_RUN)
+      # MK_RUN does the same for the WonderMake items, teams and projects, and
+      # TR_RUN for the trading branch, masters, series prefix and vehicles. The
+      # other legs ignore all three.
+      - name: Fix the run id (ND_RUN, MK_RUN, TR_RUN)
         run: |
           RUN=$(date +%s)
           echo "ND_RUN=$RUN" >> "$GITHUB_ENV"
           echo "MK_RUN=$RUN" >> "$GITHUB_ENV"
+          echo "TR_RUN=$RUN" >> "$GITHUB_ENV"
 
       # Each seed_*.dart commits all its work, prints the completion marker, then
       # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
@@ -313,6 +325,7 @@ jobs:
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
             "--dart-define=ND_RUN=$ND_RUN" "--dart-define=MK_RUN=$MK_RUN" \
+            "--dart-define=TR_RUN=$TR_RUN" \
             --web-headless true --web-server-timeout 600 \
             --web-video ${{ matrix.video }} --web-results-dir "$PWD/test-results" \
             --web-timeout 1200000 \
