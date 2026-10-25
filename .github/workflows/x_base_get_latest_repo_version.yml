@@ -21,7 +21,7 @@ jobs:
     outputs:
         latest_version: ${{ steps.get_version.outputs.latest_version }}
     steps:
-      - name: Check out only flutterFlow web folder
+      - name: Check out only .gitignore to read the head commit
         uses: actions/checkout@v5
         with:
           repository: WonderWhyDev/wonderWhy

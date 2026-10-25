@@ -127,25 +127,6 @@ jobs:
           find build/web -maxdepth 1 \( -name '*.html' -o -name '*.js' \) -exec sed -i "s/main\.dart\.js/main.dart.${HASH}.js/g" {} +
           mv build/web ../../../webDeploy/flutterMakeWeb
 
-      - name: Strip bundled fonts from FlutterFlow pubspecs
-        run: |
-          cd wonderWhy/flutterFlow/wonder_move_web
-          sed -i '/^  fonts:$/,/^  [^ ]/{ /^  fonts:$/d; /^    /d; }' pubspec.yaml
-          sed -i '/^  fonts:$/,/^  [^ ]/{ /^  fonts:$/d; /^    /d; }' dependencies/login_dljfie/pubspec.yaml
-
-      - name: build flutter flow web
-        run: |
-          cd wonderWhy/flutterFlow/wonder_move_web
-          flutter clean
-          flutter pub get
-          flutter build web --release
-          rm -rf build/web/canvaskit
-          HASH=$(md5sum build/web/main.dart.js | cut -c1-8)
-          mv build/web/main.dart.js build/web/main.dart.${HASH}.js
-          sed -i "s/main\.dart\.js/main.dart.${HASH}.js/g" build/web/index.html
-          mv build/web ../../webDeploy/
-          mv ../../webDeploy/web ../../webDeploy/ffWeb
-
       - name: Brotli compress
         run: |
           sudo apt-get -y install brotli
@@ -172,15 +153,14 @@ jobs:
           unzipDestination: ~/
           runScript: |
             cd webDeploy
-            # The React app (wonderWhy web/) is deleted; this clears its old
-            # build. nginx sends /sub/ to the Flutter app.
-            sudo rm -rf ~/nginx/html
-            mkdir ~/nginx/flutterflow
+            # The React app (wonderWhy web/) and the FlutterFlow app are
+            # deleted; this clears their old builds. nginx sends their old
+            # paths to the Flutter app.
+            sudo rm -rf ~/nginx/html ~/nginx/flutterflow
             mkdir ~/nginx/config
             mkdir ~/nginx/vijayBulkTransport
             mkdir ~/nginx/flutterWeb
             mkdir ~/nginx/flutterMakeWeb
-            cp -r ffWeb/* ~/nginx/flutterflow/
             cp -r flutterWeb/* ~/nginx/flutterWeb/
             cp -r flutterMakeWeb/* ~/nginx/flutterMakeWeb/
             cp -r vijayBulkTransport/* ~/nginx/vijayBulkTransport/
