@@ -75,27 +75,13 @@ jobs:
           flutter-version: 3.47.3
           cache: true
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          cache: "yarn"
-          cache-dependency-path: "wonderWhy/web/yarn.lock"
-
-      # web/ is its own standalone yarn project now (the root yarn workspace is
-      # gone; backend/ is installed by bun and is not needed for this build).
-      - name: build react web
-        run: |
-          cd wonderWhy/web
-          yarn install
-          yarn build
-          mkdir ../webDeploy
-          mv dist ../webDeploy/reactWeb
-
       # Sourced from the webAppAssets checkout, not wonderWhy. Lands at the same
       # path with the same contents, so brotli/zip/copy_to_ec2 and the nginx
       # server block downstream are unaffected.
       - name: build wondermove site
-        run: mv webAppAssets/wondermoveSite wonderWhy/webDeploy/wondermoveSite
+        run: |
+          mkdir wonderWhy/webDeploy
+          mv webAppAssets/wondermoveSite wonderWhy/webDeploy/wondermoveSite
 
       - name: build vijay bulk transport site
         run: |
@@ -186,15 +172,15 @@ jobs:
           unzipDestination: ~/
           runScript: |
             cd webDeploy
+            # The React app (wonderWhy web/) is deleted; this clears its old
+            # build. nginx sends /sub/ to the Flutter app.
             sudo rm -rf ~/nginx/html
-            mkdir ~/nginx/html
             mkdir ~/nginx/flutterflow
             mkdir ~/nginx/config
             mkdir ~/nginx/vijayBulkTransport
             mkdir ~/nginx/flutterWeb
             mkdir ~/nginx/flutterMakeWeb
             cp -r ffWeb/* ~/nginx/flutterflow/
-            cp -r reactWeb/* ~/nginx/html/
             cp -r flutterWeb/* ~/nginx/flutterWeb/
             cp -r flutterMakeWeb/* ~/nginx/flutterMakeWeb/
             cp -r vijayBulkTransport/* ~/nginx/vijayBulkTransport/
