@@ -97,6 +97,18 @@ jobs:
             seed_marker: "seed-no-driver] done"
             needs_mock: false
             video: "on"
+          # Transporter and fuel bills through the UI: a market trip from
+          # Manual Entry, its initial pay, a fill at the bunk, the held final
+          # pay, a fuel bill and a transporter bill, both paid in cash. The
+          # mock overlay is on only for S3 (the acknowledgement image); nothing
+          # reaches OCR or HDFC.
+          - name: tb_bills
+            target: patrol_test/journey/tb_bills_test.dart
+            report_name: tb-bills-playwright-report
+            seed_cmd: dart run tool/seed_tb_bills.dart
+            seed_marker: "seed-tb-bills] done"
+            needs_mock: true
+            video: "on"
           # The trading module through the UI: masters, settings, two sales
           # bills and their trips (issue, edit, cancel, trip retry). The seeded
           # firm has e-invoice off, so nothing reaches GSTZen.
@@ -224,14 +236,16 @@ jobs:
       # start epoch, not a counter: the seed dates its trips from it) and the
       # Patrol test rebuilds the same names from it, so both read this one value.
       # MK_RUN does the same for the WonderMake items, teams and projects, and
-      # TR_RUN for the trading branch, masters, series prefix and vehicles. The
-      # other legs ignore all three.
-      - name: Fix the run id (ND_RUN, MK_RUN, TR_RUN)
+      # TR_RUN for the trading branch, masters, series prefix and vehicles, and
+      # TB_RUN for the bill journey's transporter, truck, bunk and cash account.
+      # The other legs ignore all four.
+      - name: Fix the run id (ND_RUN, MK_RUN, TR_RUN, TB_RUN)
         run: |
           RUN=$(date +%s)
           echo "ND_RUN=$RUN" >> "$GITHUB_ENV"
           echo "MK_RUN=$RUN" >> "$GITHUB_ENV"
           echo "TR_RUN=$RUN" >> "$GITHUB_ENV"
+          echo "TB_RUN=$RUN" >> "$GITHUB_ENV"
 
       # Each seed_*.dart commits all its work, prints the completion marker, then
       # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
@@ -325,7 +339,7 @@ jobs:
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
             "--dart-define=ND_RUN=$ND_RUN" "--dart-define=MK_RUN=$MK_RUN" \
-            "--dart-define=TR_RUN=$TR_RUN" \
+            "--dart-define=TR_RUN=$TR_RUN" "--dart-define=TB_RUN=$TB_RUN" \
             --web-headless true --web-server-timeout 600 \
             --web-video ${{ matrix.video }} --web-results-dir "$PWD/test-results" \
             --web-timeout 1200000 \
