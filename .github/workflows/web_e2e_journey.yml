@@ -301,14 +301,18 @@ jobs:
           if-no-files-found: warn
 
       # Pin to the Playwright version patrol's web_runner bundles (patrol 4.9.0 ->
-      # playwright 1.56.0). Installing the matching browser + system deps here makes
-      # patrol's own `npx playwright install` a cached no-op instead of failing.
+      # playwright 1.56.0). Installing the matching browser here makes patrol's
+      # own `npx playwright install` a cached no-op instead of failing.
+      # No --with-deps: the runner image already has all 21 libraries chromium
+      # needs. The flag only added CJK/Thai/X11 font packages, which Flutter web
+      # never uses (it draws text with its own fonts), and their apt download
+      # once crawled past the 10-minute cap (run 40279657924, trading leg).
       # timeout: this install is ~30s of download plus a few seconds of unpack.
       # Capped so a repeat of the node-26 unpack hang fails here in minutes
       # instead of silently eating the whole job budget.
       - name: Install Playwright Chromium (match patrol web_runner)
         timeout-minutes: 10
-        run: npx --yes playwright@1.56.0 install --with-deps chromium
+        run: npx --yes playwright@1.56.0 install chromium
 
       # Blocking: each leg's own Patrol suite, driven end to end against its own
       # isolated stack. The payout step's payable + beneficiary (driver_advance

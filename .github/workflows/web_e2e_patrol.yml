@@ -135,12 +135,14 @@ jobs:
 
       # Pin to the Playwright version patrol's web_runner bundles (patrol 4.9.0 ->
       # playwright 1.56.0) so patrol's own `npx playwright install` is a cached no-op.
+      # No --with-deps: the runner already has chromium's libraries; see the same
+      # step in web_e2e_journey.yml.
       # timeout: this install is ~30s of download plus a few seconds of unpack.
       # Capped so a repeat of the node-26 unpack hang fails here in minutes
       # instead of silently eating the whole job budget.
       - name: Install Playwright Chromium (match patrol web_runner)
         timeout-minutes: 10
-        run: npx --yes playwright@1.56.0 install --with-deps chromium
+        run: npx --yes playwright@1.56.0 install chromium
 
       # --lang=en-US: headless chromium otherwise exposes an empty/malformed
       # navigator.languages, and Flutter's engine init throws "Incorrect locale
