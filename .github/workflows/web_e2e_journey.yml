@@ -109,6 +109,19 @@ jobs:
             seed_marker: "seed-tb-bills] done"
             needs_mock: true
             video: "on"
+          # The transporter portal as a market transporter sees it while the
+          # tenant pays transporters through bills: the seed makes the staff
+          # side through the API (five trips in each state, an advance on
+          # account, an approved incentive and deduction, two bills, one paid
+          # in cash), then the transporter's own login checks every tab and
+          # raises its own invoice. Same stack as tb_bills.
+          - name: transporter_portal
+            target: patrol_test/journey/transporter_portal_test.dart
+            report_name: transporter-portal-playwright-report
+            seed_cmd: dart run tool/seed_transporter_portal.dart
+            seed_marker: "seed-transporter-portal] done"
+            needs_mock: true
+            video: "on"
           # The trading module through the UI: masters, settings, two sales
           # bills and their trips (issue, edit, cancel, trip retry). The seeded
           # firm has e-invoice off, so nothing reaches GSTZen.
@@ -237,15 +250,17 @@ jobs:
       # Patrol test rebuilds the same names from it, so both read this one value.
       # MK_RUN does the same for the WonderMake items, teams and projects, and
       # TR_RUN for the trading branch, masters, series prefix and vehicles, and
-      # TB_RUN for the bill journey's transporter, truck, bunk and cash account.
-      # The other legs ignore all four.
-      - name: Fix the run id (ND_RUN, MK_RUN, TR_RUN, TB_RUN)
+      # TB_RUN for the bill journey's transporter, truck, bunk and cash account,
+      # and TP_RUN for the portal journey's transporter, its login, trucks and
+      # cash account. The other legs ignore all five.
+      - name: Fix the run id (ND_RUN, MK_RUN, TR_RUN, TB_RUN, TP_RUN)
         run: |
           RUN=$(date +%s)
           echo "ND_RUN=$RUN" >> "$GITHUB_ENV"
           echo "MK_RUN=$RUN" >> "$GITHUB_ENV"
           echo "TR_RUN=$RUN" >> "$GITHUB_ENV"
           echo "TB_RUN=$RUN" >> "$GITHUB_ENV"
+          echo "TP_RUN=$RUN" >> "$GITHUB_ENV"
 
       # Each seed_*.dart commits all its work, prints the completion marker, then
       # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
@@ -344,6 +359,7 @@ jobs:
             --dart-define=ENV=local --dart-define=E2E=true \
             "--dart-define=ND_RUN=$ND_RUN" "--dart-define=MK_RUN=$MK_RUN" \
             "--dart-define=TR_RUN=$TR_RUN" "--dart-define=TB_RUN=$TB_RUN" \
+            "--dart-define=TP_RUN=$TP_RUN" \
             --web-headless true --web-server-timeout 600 \
             --web-video ${{ matrix.video }} --web-results-dir "$PWD/test-results" \
             --web-timeout 1200000 \
