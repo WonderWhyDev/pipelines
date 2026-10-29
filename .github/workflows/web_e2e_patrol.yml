@@ -37,7 +37,9 @@ on:
 
 jobs:
   patrol-web:
-    runs-on: ubuntu-latest
+    # Pinned to 24.04 for the same reason as web_e2e_journey.yml: playwright
+    # 1.56.0 cannot install chromium on ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       # compose.local.yml publishes nginx on ${WEB_PORT} and requires it to be set,

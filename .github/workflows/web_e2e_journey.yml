@@ -55,7 +55,12 @@ on:
 
 jobs:
   journey:
-    runs-on: ubuntu-latest
+    # Pinned to 24.04: ubuntu-latest moved to 26.04, and playwright 1.56.0
+    # (bundled by patrol 4.9.0) refuses to install chromium there ("does not
+    # support chromium on ubuntu26.04-x64", run 40855901008). Playwright 1.61+
+    # supports 26.04, but no patrol release bundles it yet (4.10.0 is still on
+    # 1.56.0). Revisit when leancodepl/patrol#3319 (playwright 1.64.1) ships.
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
