@@ -40,7 +40,7 @@ jobs:
       # The one list of deployed agents. Add a new agent here once its Lambda
       # exists and it has fixtures/smoke/<agent>.json + .jq.
       - id: agents
-        run: echo 'agents=["detect-lat-long","gps-visits","fuel-reconcile","captcha-ocr"]' >> "$GITHUB_OUTPUT"
+        run: echo 'agents=["detect-lat-long","gps-visits","fuel-reconcile","captcha-ocr","truck-positions"]' >> "$GITHUB_OUTPUT"
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
