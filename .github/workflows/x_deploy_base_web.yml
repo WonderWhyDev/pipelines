@@ -161,9 +161,13 @@ jobs:
             mkdir ~/nginx/vijayBulkTransport
             mkdir ~/nginx/flutterWeb
             mkdir ~/nginx/flutterMakeWeb
+            mkdir -p ~/nginx/wondermoveSite
             cp -r flutterWeb/* ~/nginx/flutterWeb/
             cp -r flutterMakeWeb/* ~/nginx/flutterMakeWeb/
             cp -r vijayBulkTransport/* ~/nginx/vijayBulkTransport/
+            # wondermove.in: the public site and its .well-known files
+            # (assetlinks.json, AASA) for app links and passkeys.
+            cp -rT wondermoveSite ~/nginx/wondermoveSite
             echo "completed copying files"
             echo '{
                "authDomain": "https://auth._HOST_",
