@@ -9,6 +9,22 @@ on:
         required: true
         type: string
         default: main
+  # 1_Branch_Check calls this with tests_only: true, so only the test jobs run.
+  # A manual run has no tests_only input, and !null is true, so it deploys as before.
+  workflow_call:
+    inputs:
+      branch:
+        description: 'wonderWhy commit or branch to test'
+        required: true
+        type: string
+      tests_only:
+        description: 'Skip every deploy job'
+        type: boolean
+        default: false
+      skip_e2e:
+        description: 'Skip the web E2E journey (the caller runs it once itself)'
+        type: boolean
+        default: false
 
 jobs:
   find_latest_version:
@@ -278,6 +294,7 @@ jobs:
   # blocks deploy_prod (QA still deploys).
   e2e_journey:
     needs: [find_latest_version]
+    if: ${{ !inputs.skip_e2e }}
     uses: ./.github/workflows/web_e2e_journey.yml
     with:
       ref: ${{ needs.find_latest_version.outputs.latest_version }}
@@ -287,6 +304,7 @@ jobs:
 
   deploy_qa:
     needs: [find_latest_version, lint, unit_test, coverage_wondermove]
+    if: ${{ !inputs.tests_only }}
     uses: ./.github/workflows/x_deploy_base_web.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
@@ -305,6 +323,7 @@ jobs:
 
   deploy_prod:
     needs: [find_latest_version, deploy_qa, e2e_journey]
+    if: ${{ !inputs.tests_only }}
     uses: ./.github/workflows/x_deploy_base_web.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}

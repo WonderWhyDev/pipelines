@@ -1,0 +1,161 @@
+# Branch check: every wonderWhy test job on one branch, and no deploy.
+#
+# It calls the deploy pipelines with tests_only: true, so each test job is
+# defined once, in its own pipeline. Their deploy and store jobs are skipped.
+#
+# scope changed (default) runs only the parts the branch touched since it left
+# main; the folder map is .github/actions/branch_stacks/branch_stacks.sh.
+# scope all runs every part. The web E2E journey runs once here, not once per
+# pipeline.
+#
+# Every part tests the same commit: plan resolves the branch once and passes
+# the SHA down. A newer run on the same branch cancels the one still running.
+# The Result job gives one verdict for the whole run.
+#
+# Runs are named Branch_Check_-_<branch>. 9_Cleanup_Runs deletes them once the
+# branch is gone from wonderWhy.
+
+name: "1_Branch_Check"
+run-name: Branch_Check_-_${{ inputs.branch }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'wonderWhy branch to test (nothing is deployed)'
+        required: true
+        type: string
+      scope:
+        description: 'changed = only what the branch touched since main; all = everything'
+        required: true
+        type: choice
+        options:
+          - changed
+          - all
+        default: changed
+
+concurrency:
+  group: branch-check-${{ inputs.branch }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Plan (${{ inputs.scope }})
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.stacks.outputs.sha }}
+      backend: ${{ steps.stacks.outputs.backend }}
+      web: ${{ steps.stacks.outputs.web }}
+      e2e: ${{ steps.stacks.outputs.e2e }}
+      mobile: ${{ steps.stacks.outputs.mobile }}
+      agents: ${{ steps.stacks.outputs.agents }}
+      tally: ${{ steps.stacks.outputs.tally }}
+    steps:
+      - name: Check out pipelines repo for actions
+        uses: actions/checkout@v5
+
+      # Full history so the merge base with main is known, but no file contents
+      # (blob:none) and only .gitignore on disk: the diff needs trees, not files.
+      - name: Check out wonderWhy history
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.branch }}
+          path: wonderWhy
+          fetch-depth: 0
+          filter: blob:none
+          sparse-checkout: '.gitignore'
+          sparse-checkout-cone-mode: false
+
+      - name: Pick the commit and the parts to test
+        id: stacks
+        uses: ./.github/actions/branch_stacks
+        with:
+          repo_path: wonderWhy
+          scope: ${{ inputs.scope }}
+
+  backend:
+    needs: plan
+    if: needs.plan.outputs.backend == 'true'
+    uses: ./.github/workflows/0_backend_pipeline.yml
+    with:
+      branch: ${{ needs.plan.outputs.sha }}
+      tests_only: true
+      skip_e2e: true
+    secrets: inherit
+
+  web:
+    needs: plan
+    if: needs.plan.outputs.web == 'true'
+    uses: ./.github/workflows/0_web_pipeline.yml
+    with:
+      branch: ${{ needs.plan.outputs.sha }}
+      tests_only: true
+      skip_e2e: true
+    secrets: inherit
+
+  e2e_journey:
+    needs: plan
+    if: needs.plan.outputs.e2e == 'true'
+    uses: ./.github/workflows/web_e2e_journey.yml
+    with:
+      ref: ${{ needs.plan.outputs.sha }}
+    secrets:
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      GHRC_SECRET_KEY: ${{ secrets.GHRC_SECRET_KEY }}
+
+  mobile:
+    needs: plan
+    if: needs.plan.outputs.mobile == 'true'
+    uses: ./.github/workflows/0_deploy_mobile.yml
+    with:
+      branch: ${{ needs.plan.outputs.sha }}
+      tests_only: true
+    secrets: inherit
+
+  agents:
+    needs: plan
+    if: needs.plan.outputs.agents == 'true'
+    uses: ./.github/workflows/0_deploy_agent.yml
+    with:
+      branch: ${{ needs.plan.outputs.sha }}
+      tests_only: true
+    secrets: inherit
+
+  tally:
+    needs: plan
+    if: needs.plan.outputs.tally == 'true'
+    uses: ./.github/workflows/0_tally_sync_pipeline.yml
+    with:
+      branch: ${{ needs.plan.outputs.sha }}
+      tests_only: true
+    secrets: inherit
+
+  # Red if any part failed or was cancelled; green when every part that ran
+  # passed. A part the branch did not need shows as skipped.
+  result:
+    name: Result
+    needs: [plan, backend, web, e2e_journey, mobile, agents, tally]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check every part
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          SHA: ${{ needs.plan.outputs.sha }}
+        run: |
+          {
+            echo "### Branch check of \`$SHA\`"
+            echo
+            echo "| part | result |"
+            echo "|---|---|"
+            echo "$NEEDS" | jq -r 'to_entries[] | "| \(.key) | \(.value.result) |"'
+          } >>"$GITHUB_STEP_SUMMARY"
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key)=\(.value.result)"'
+          not_green=$(echo "$NEEDS" | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped") | .key] | join(", ")')
+          if [ -n "$not_green" ]; then
+            echo "::error::Not green: $not_green"
+            exit 1
+          fi
+          echo "Green: $SHA"

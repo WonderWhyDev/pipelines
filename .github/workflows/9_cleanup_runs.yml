@@ -2,10 +2,12 @@ name: "9_Cleanup_Runs"
 run-name: Cleanup_Workflow_Runs
 
 # Per workflow: always keep the latest keep_minimum_runs SUCCESSFUL runs, and
-# delete every other completed run older than retain_days.
+# delete every other completed run older than retain_days (weekly).
+# Daily: delete the 1_Branch_Check runs of wonderWhy branches that are gone.
 on:
   schedule:
     - cron: "17 3 * * 0"
+    - cron: "41 2 * * *"
   workflow_dispatch:
     inputs:
       retain_days:
@@ -25,6 +27,8 @@ permissions:
 
 jobs:
   cleanup:
+    # Weekly only: the daily schedule is for branch_check_runs below.
+    if: github.event_name != 'schedule' || github.event.schedule == '17 3 * * 0'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -54,3 +58,34 @@ jobs:
               fi
             done
           done
+
+  # A Branch_Check run is named Branch_Check_-_<branch>. Once that wonderWhy
+  # branch is deleted (ww-land.sh cleanup does it after the commit is on main),
+  # its runs are noise.
+  branch_check_runs:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      WW_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+    steps:
+      - name: Delete Branch_Check runs whose branch is gone
+        run: |
+          branches=$(GH_TOKEN="$WW_TOKEN" gh api --paginate repos/WonderWhyDev/wonderWhy/branches --jq '.[].name')
+          if [ -z "$branches" ]; then
+            echo "::error::could not list the wonderWhy branches; nothing deleted"
+            exit 1
+          fi
+          gh api --paginate "repos/$REPO/actions/workflows/1_branch_check.yml/runs?status=completed&per_page=100" \
+            --jq '.workflow_runs[] | [.id, .display_title] | @tsv' |
+            while IFS=$'\t' read -r id title; do
+              branch=${title#Branch_Check_-_}
+              [ "$branch" != "$title" ] || continue
+              printf '%s\n' "$branches" | grep -qxF -- "$branch" && continue
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "would delete run=$id (branch $branch is gone)"
+              else
+                gh api -X DELETE "repos/$REPO/actions/runs/$id" && echo "deleted run=$id (branch $branch is gone)"
+              fi
+            done

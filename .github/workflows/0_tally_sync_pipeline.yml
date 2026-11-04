@@ -30,6 +30,22 @@ on:
           - test
           - production
         default: test
+  # 1_Branch_Check calls this with tests_only: true: lint, the tests and the
+  # release build still run, but the app is not uploaded.
+  workflow_call:
+    inputs:
+      branch:
+        description: 'wonderWhy commit or branch to test'
+        required: true
+        type: string
+      env:
+        description: 'Server the built app talks to'
+        type: string
+        default: test
+      tests_only:
+        description: 'Skip the app upload'
+        type: boolean
+        default: false
 
 jobs:
   find_latest_version:
@@ -183,6 +199,7 @@ jobs:
       # A PC without the Visual C++ redistributable cannot start the app unless
       # these three DLLs sit next to the exe (Flutter's Windows deployment docs).
       - name: Add the Visual C++ runtime
+        if: ${{ !inputs.tests_only }}
         working-directory: flutter/apps/wonder_tally_sync
         run: |
           $release = "build\windows\x64\runner\Release"
@@ -191,6 +208,7 @@ jobs:
           }
 
       - name: Upload the app
+        if: ${{ !inputs.tests_only }}
         uses: actions/upload-artifact@v4
         with:
           name: wonder_tally_sync-windows-x64-${{ inputs.env }}

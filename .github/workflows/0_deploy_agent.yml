@@ -9,6 +9,18 @@ on:
         required: true
         type: string
         default: main
+  # 1_Branch_Check calls this with tests_only: true, so only verify runs.
+  # A manual run has no tests_only input, and !null is true, so it deploys as before.
+  workflow_call:
+    inputs:
+      branch:
+        description: 'wonderWhy commit or branch to test'
+        required: true
+        type: string
+      tests_only:
+        description: 'Skip every deploy job'
+        type: boolean
+        default: false
 
 jobs:
   # Lint, typecheck and test ONCE. Each deploy below only builds and ships its
@@ -78,6 +90,7 @@ jobs:
 
   deploy_qa:
     needs: verify
+    if: ${{ !inputs.tests_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -98,6 +111,7 @@ jobs:
   # Prod starts only when every agent passed QA.
   deploy_prod:
     needs: [verify, deploy_qa]
+    if: ${{ !inputs.tests_only }}
     strategy:
       fail-fast: false
       matrix:

@@ -1,0 +1,46 @@
+name: Branch stacks
+description: >-
+  Pick the exact commit of a wonderWhy branch and which test pipelines it needs,
+  from the paths it changed since it left main. The folder map lives in
+  branch_stacks.sh; its tests in branch_stacks.test.sh.
+
+inputs:
+  repo_path:
+    description: wonderWhy checkout with full history (filter blob:none is enough)
+    required: true
+  scope:
+    description: "changed: only the parts the branch touched; all: every part"
+    required: true
+
+outputs:
+  sha:
+    description: The commit every part tests
+    value: ${{ steps.map.outputs.sha }}
+  backend:
+    description: Run the backend tests
+    value: ${{ steps.map.outputs.backend }}
+  web:
+    description: Run the web tests
+    value: ${{ steps.map.outputs.web }}
+  e2e:
+    description: Run the web E2E journey
+    value: ${{ steps.map.outputs.e2e }}
+  mobile:
+    description: Run the mobile tests
+    value: ${{ steps.map.outputs.mobile }}
+  agents:
+    description: Run the agents tests
+    value: ${{ steps.map.outputs.agents }}
+  tally:
+    description: Run the tally sync tests
+    value: ${{ steps.map.outputs.tally }}
+
+runs:
+  using: composite
+  steps:
+    - id: map
+      shell: bash
+      working-directory: ${{ inputs.repo_path }}
+      env:
+        SCOPE: ${{ inputs.scope }}
+      run: bash "$GITHUB_ACTION_PATH/branch_stacks.sh" "$SCOPE" | tee -a "$GITHUB_OUTPUT"

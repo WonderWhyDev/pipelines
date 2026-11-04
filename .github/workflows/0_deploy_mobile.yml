@@ -9,6 +9,19 @@ on:
         required: true
         type: string
         default: main
+  # 1_Branch_Check calls this with tests_only: true: lint, unit tests and the
+  # Android E2E run; nothing goes to the stores.
+  # A manual run has no tests_only input, and !null is true, so it deploys as before.
+  workflow_call:
+    inputs:
+      branch:
+        description: 'wonderWhy commit or branch to test'
+        required: true
+        type: string
+      tests_only:
+        description: 'Skip every store deploy job'
+        type: boolean
+        default: false
 
 jobs:
   find_latest_version:
@@ -424,6 +437,7 @@ jobs:
 
   beta_android:
     needs: [find_latest_version, lint, unit_test]
+    if: ${{ !inputs.tests_only }}
     uses: ./.github/workflows/x_deploy_base_mobile_android.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
@@ -438,6 +452,7 @@ jobs:
 
   beta_ios:
     needs: [find_latest_version, lint, unit_test]
+    if: ${{ !inputs.tests_only }}
     uses: ./.github/workflows/x_deploy_base_mobile_ios.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
@@ -454,6 +469,7 @@ jobs:
 
   promote_android:
     needs: [find_latest_version, beta_android, android_e2e]
+    if: ${{ !inputs.tests_only }}
     uses: ./.github/workflows/x_deploy_base_mobile_android.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
@@ -471,6 +487,7 @@ jobs:
   # shell, so a failure there means the iOS build is broken in the same way.
   promote_ios:
     needs: [find_latest_version, beta_ios, android_e2e]
+    if: ${{ !inputs.tests_only }}
     uses: ./.github/workflows/x_deploy_base_mobile_ios.yml
     with:
       versionToBuild: ${{ needs.find_latest_version.outputs.latest_version }}
