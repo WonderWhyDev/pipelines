@@ -1,6 +1,7 @@
 # Driver-advance journey + operations dashboard + vehicle-attendance + No Driver
-# + trading + WonderMake E2E, run as 6 parallel matrix legs (one per Patrol
-# suite), each against its own isolated docker-compose stack.
+# + transporter/fuel bills + transporter portal + lease vehicle + trading +
+# WonderMake E2E, run as 9 parallel matrix legs (one per Patrol suite), each
+# against its own isolated docker-compose stack.
 #
 # The driver-advance leg's journey (OCR + HDFC payout) runs without touching a
 # real external provider: a single dummy mock-server container fakes both. See
@@ -125,6 +126,20 @@ jobs:
             report_name: transporter-portal-playwright-report
             seed_cmd: dart run tool/seed_transporter_portal.dart
             seed_marker: "seed-transporter-portal] done"
+            needs_mock: true
+            video: "on"
+          # A truck on lease through a whole month through the UI: put on
+          # lease, a trip with a driver advance and a fill, a workshop day and
+          # a No Driver day, unload, the rent bill draft with its cut days,
+          # confirm, pay in cash, a locked advance, then the owner's own login
+          # sees the bill in the portal. Every date is in the previous month
+          # (IST), so the bill can be confirmed. Same stack as tb_bills; the
+          # mock overlay is on only for localstack (the GL queues).
+          - name: lease
+            target: patrol_test/journey/lease_test.dart
+            report_name: lease-playwright-report
+            seed_cmd: dart run tool/seed_lease.dart
+            seed_marker: "seed-lease] done"
             needs_mock: true
             video: "on"
           # The trading module through the UI: masters, settings, two sales
@@ -257,8 +272,9 @@ jobs:
       # TR_RUN for the trading branch, masters, series prefix and vehicles, and
       # TB_RUN for the bill journey's transporter, truck, bunk and cash account,
       # and TP_RUN for the portal journey's transporter, its login, trucks and
-      # cash account. The other legs ignore all five.
-      - name: Fix the run id (ND_RUN, MK_RUN, TR_RUN, TB_RUN, TP_RUN)
+      # cash account, and LV_RUN for the lease journey's owner, its login, truck,
+      # driver and cash account. The other legs ignore all six.
+      - name: Fix the run id (ND_RUN, MK_RUN, TR_RUN, TB_RUN, TP_RUN, LV_RUN)
         run: |
           RUN=$(date +%s)
           echo "ND_RUN=$RUN" >> "$GITHUB_ENV"
@@ -266,6 +282,7 @@ jobs:
           echo "TR_RUN=$RUN" >> "$GITHUB_ENV"
           echo "TB_RUN=$RUN" >> "$GITHUB_ENV"
           echo "TP_RUN=$RUN" >> "$GITHUB_ENV"
+          echo "LV_RUN=$RUN" >> "$GITHUB_ENV"
 
       # Each seed_*.dart commits all its work, prints the completion marker, then
       # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
@@ -364,7 +381,7 @@ jobs:
             --dart-define=ENV=local --dart-define=E2E=true \
             "--dart-define=ND_RUN=$ND_RUN" "--dart-define=MK_RUN=$MK_RUN" \
             "--dart-define=TR_RUN=$TR_RUN" "--dart-define=TB_RUN=$TB_RUN" \
-            "--dart-define=TP_RUN=$TP_RUN" \
+            "--dart-define=TP_RUN=$TP_RUN" "--dart-define=LV_RUN=$LV_RUN" \
             --web-headless true --web-server-timeout 600 \
             --web-video ${{ matrix.video }} --web-results-dir "$PWD/test-results" \
             --web-timeout 1200000 \
