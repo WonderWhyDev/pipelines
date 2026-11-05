@@ -283,6 +283,10 @@ jobs:
             targets: test/api/mileage_recalc_trip_test.dart
           - name: mileage_task
             targets: test/api/mileage_recalc_task_test.dart
+          # Inventory bill -> tyres -> fitment -> bill delete refusal, across
+          # vehicleService, tyre and accounts on the real stack.
+          - name: tyre_lifecycle
+            targets: test/api/tyre_lifecycle_test.dart
     name: Functional Tests (${{ matrix.name }})
     env:
       PROJECT: ci-${{ matrix.name }}
