@@ -1,7 +1,8 @@
 # Driver-advance journey + operations dashboard + vehicle-attendance + No Driver
-# + driver onboarding + transporter/fuel bills + transporter portal + lease
-# vehicle + trading + WonderMake E2E, run as 10 parallel matrix legs (one per
-# Patrol suite), each against its own isolated docker-compose stack.
+# + driver onboarding + container trips (detachable + attached) +
+# transporter/fuel bills + transporter portal + lease vehicle + trading +
+# WonderMake E2E, run as 11 parallel matrix legs (one per Patrol suite), each
+# against its own isolated docker-compose stack.
 #
 # The driver-advance leg's journey (OCR + HDFC payout) runs without touching a
 # real external provider: a single dummy mock-server container fakes both. See
@@ -115,6 +116,25 @@ jobs:
             report_name: driver-onboarding-playwright-report
             seed_cmd: dart run tool/seed_driver_onboarding.dart
             seed_marker: "seed-driver-onboarding] done"
+            needs_mock: false
+            video: "on"
+          # Both container journeys through the UI, in one Patrol bundle:
+          # - Detachable Container Trailer: a container price point (1x20, base
+          #   amount up to a base qty, extra per ton), a Bulker on that lane
+          #   left unpriced, the container trip by Manual Entry priced by size
+          #   and load, then its container number and halt charge on Trip
+          #   Status (container_trip_test.dart, CT_RUN).
+          # - Attached Container Carrier on Monthly Hire: an agreement, a
+          #   vehicle added later, the day-wise trip grid with future days
+          #   locked, the extra-km amount and the list totals
+          #   (monthly_hire_test.dart, MH_RUN).
+          # seed_container_trips.dart runs both seeds. Nothing reaches OCR,
+          # HDFC or S3.
+          - name: container_trip
+            target: patrol_test/journey/container_trip_test.dart,patrol_test/journey/monthly_hire_test.dart
+            report_name: container-trip-playwright-report
+            seed_cmd: dart run tool/seed_container_trips.dart
+            seed_marker: "seed-container-trips] done"
             needs_mock: false
             video: "on"
           # Transporter and fuel bills through the UI: a market trip from
@@ -288,8 +308,10 @@ jobs:
       # and TP_RUN for the portal journey's transporter, its login, trucks and
       # cash account, and LV_RUN for the lease journey's owner, its login, truck,
       # driver and cash account, and DO_RUN for the driver onboarding journey's
-      # drivers and its operations head login. The other legs ignore all seven.
-      - name: Fix the run id (ND_RUN, MK_RUN, TR_RUN, TB_RUN, TP_RUN, LV_RUN, DO_RUN)
+      # drivers and its operations head login, and CT_RUN and MH_RUN for the
+      # container trip leg's detachable lane, driver and trucks and its monthly
+      # hire company and attached trucks. The other legs ignore all nine.
+      - name: Fix the run id (ND_RUN, MK_RUN, TR_RUN, TB_RUN, TP_RUN, LV_RUN, DO_RUN, CT_RUN, MH_RUN)
         run: |
           RUN=$(date +%s)
           echo "ND_RUN=$RUN" >> "$GITHUB_ENV"
@@ -299,6 +321,8 @@ jobs:
           echo "TP_RUN=$RUN" >> "$GITHUB_ENV"
           echo "LV_RUN=$RUN" >> "$GITHUB_ENV"
           echo "DO_RUN=$RUN" >> "$GITHUB_ENV"
+          echo "CT_RUN=$RUN" >> "$GITHUB_ENV"
+          echo "MH_RUN=$RUN" >> "$GITHUB_ENV"
 
       # Each seed_*.dart commits all its work, prints the completion marker, then
       # hangs (the Dart VM doesn't exit — a lingering client keeps the loop alive).
@@ -398,7 +422,8 @@ jobs:
             "--dart-define=ND_RUN=$ND_RUN" "--dart-define=MK_RUN=$MK_RUN" \
             "--dart-define=TR_RUN=$TR_RUN" "--dart-define=TB_RUN=$TB_RUN" \
             "--dart-define=TP_RUN=$TP_RUN" "--dart-define=LV_RUN=$LV_RUN" \
-            "--dart-define=DO_RUN=$DO_RUN" \
+            "--dart-define=DO_RUN=$DO_RUN" "--dart-define=CT_RUN=$CT_RUN" \
+            "--dart-define=MH_RUN=$MH_RUN" \
             --web-headless true --web-server-timeout 600 \
             --web-video ${{ matrix.video }} --web-results-dir "$PWD/test-results" \
             --web-timeout 1200000 \
