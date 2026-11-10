@@ -435,6 +435,251 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT logs --since 10m \
             backend mock-server nginx kratos || true
 
+  # Suites: every functional-test/suites/<suite>.json with "app": "android" in
+  # the commit under test. Suites that share a "leg" run in one emulator boot on
+  # one stack, each seeded in turn. A new suite needs no edit here: file format
+  # and grouping are in .github/actions/e2e_suites/e2e_suites.sh.
+  android_suite_plan:
+    needs: [find_latest_version]
+    runs-on: ubuntu-latest
+    outputs:
+      legs: ${{ steps.legs.outputs.legs }}
+      has_legs: ${{ steps.legs.outputs.has_legs }}
+    steps:
+      - name: Check out pipelines repo for actions
+        uses: actions/checkout@v5
+
+      - name: Check out the suite files
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+          path: wonderWhy
+          fetch-depth: 1
+          sparse-checkout: functional-test/suites
+
+      - name: Group the android suites into legs
+        id: legs
+        uses: ./.github/actions/e2e_suites
+        with:
+          suites_dir: wonderWhy/functional-test/suites
+          app: android
+
+  # Never skipped, so the store promotions can need it: with no android suite
+  # the matrix is one "none" leg whose steps all skip. Steps mirror
+  # android_e2e above; see its comments for the why of each.
+  android_suites:
+    needs: [find_latest_version, android_suite_plan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.android_suite_plan.outputs.legs) }}
+    name: Android E2E Suite (${{ matrix.leg }})
+    env:
+      COMPOSE_FILES: "-f compose.yml -f compose.local.yml -f compose.mock.yml"
+      PROJECT: androidsuite-${{ matrix.leg }}
+      WEB_PORT: 80
+      DB_PORT: 15432
+      FLUTTER_ROOT_DIR: flutter
+    steps:
+      - name: No android suite
+        if: matrix.leg == 'none'
+        run: echo "No functional-test/suites/*.json with app android in this commit."
+
+      - name: Checkout wonderWhy (code + compose live here)
+        if: matrix.leg != 'none'
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ needs.find_latest_version.outputs.latest_version }}
+          fetch-depth: 1
+
+      - name: Bring up offline-mock stack
+        if: matrix.leg != 'none'
+        run: |
+          mkdir -p ~/.pub-cache
+          docker compose $COMPOSE_FILES -p $PROJECT up -d --wait db localstack mailpit
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name margin
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting_dlq.fifo --attributes FifoQueue=true
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting.fifo \
+            --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal s3 mb s3://localbucket
+          docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
+            kratos backend mock-server nginx
+
+      - uses: subosito/flutter-action@v2
+        if: matrix.leg != 'none'
+        with:
+          flutter-version: "3.47.3"
+          channel: stable
+          cache: true
+
+      - name: Set up Java 17
+        if: matrix.leg != 'none'
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Cache Gradle packages
+        if: matrix.leg != 'none'
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-androide2e-${{ hashFiles('flutter/apps/wondermove_mobile/android/**/*.gradle*', 'flutter/apps/wondermove_mobile/android/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-androide2e-
+
+      - name: Bootstrap melos workspace
+        if: matrix.leg != 'none'
+        run: |
+          cd $FLUTTER_ROOT_DIR
+          dart pub get
+          dart run melos bootstrap
+
+      - name: Activate Patrol CLI
+        if: matrix.leg != 'none'
+        run: dart pub global activate patrol_cli 4.7.0
+
+      - name: Enable KVM
+        if: matrix.leg != 'none'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Cache AVD snapshot
+        if: matrix.leg != 'none'
+        uses: actions/cache@v5
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-google_apis-x86_64-pixel_5
+
+      - name: Create AVD snapshot
+        if: matrix.leg != 'none' && steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          ram-size: 4096M
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -timezone UTC
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Wait for backend
+        if: matrix.leg != 'none'
+        working-directory: functional-test
+        env:
+          BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
+        run: ./bin/wait-for-backend.sh
+
+      # One run id for the whole leg; see the web suites job.
+      - name: Fix the run id (E2E_RUN)
+        if: matrix.leg != 'none'
+        run: echo "E2E_RUN=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Seed the leg's suites (${{ matrix.suites }})
+        if: matrix.leg != 'none'
+        working-directory: functional-test
+        env:
+          SEEDS: ${{ matrix.seeds }}
+          BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
+          KRATOS_ADMIN_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/admin
+          KRATOS_PUBLIC_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/public
+          DB_HOST: localhost
+        run: |
+          set +e
+          dart pub get || exit 1
+          for pair in $SEEDS; do
+            name=${pair%%=*}
+            seed=${pair#*=}
+            log=/tmp/seed-$name.log
+            echo "::group::seed $name ($seed, E2E_RUN=$E2E_RUN)"
+            dart run "$seed" > "$log" 2>&1 &
+            pid=$!
+            for i in $(seq 1 120); do
+              grep -q "seed-$name] done" "$log" && break
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 2
+            done
+            cat "$log"
+            kill "$pid" 2>/dev/null
+            pkill -f "$seed" 2>/dev/null || true
+            echo "::endgroup::"
+            if ! grep -q "seed-$name] done" "$log"; then
+              echo "::error::seed $name never printed [seed-$name] done"
+              exit 1
+            fi
+          done
+
+      - name: Find localstack's published port
+        if: matrix.leg != 'none'
+        run: |
+          S3_HOST_PORT=$(docker compose $COMPOSE_FILES -p $PROJECT port localstack 4566 | head -1 | awk -F: '{print $NF}')
+          test -n "$S3_HOST_PORT" || { echo "localstack has no published port (compose.mock.yml)"; exit 1; }
+          echo "S3_HOST_PORT=$S3_HOST_PORT" >> "$GITHUB_ENV"
+
+      # KEEP THE PATROL COMMAND ON ONE LINE (see android_e2e: the action runs
+      # each script line on its own).
+      - name: Run Patrol (${{ matrix.leg }}) on the emulator
+        if: matrix.leg != 'none'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          ram-size: 4096M
+          force-avd-creation: false
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot-save -noaudio -no-boot-anim -timezone UTC
+          working-directory: flutter/apps/wondermove_mobile
+          script: |
+            adb reverse tcp:8080 tcp:80
+            adb reverse tcp:4566 tcp:$S3_HOST_PORT
+            PATROL_ANALYTICS_ENABLED=false patrol test ${{ matrix.targets }} --dart-define=ENV=e2e --dart-define=E2E_RUN=$E2E_RUN --record-video --verbose
+
+      - name: Upload Patrol report
+        if: always() && matrix.leg != 'none'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-suite-report-${{ matrix.leg }}
+          path: |
+            flutter/apps/wondermove_mobile/build/app/reports
+            flutter/apps/wondermove_mobile/build/app/outputs/androidTest-results
+          if-no-files-found: ignore
+
+      - name: Upload Patrol video
+        if: always() && matrix.leg != 'none'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-suite-video-${{ matrix.leg }}
+          path: flutter/apps/wondermove_mobile/patrol_test/videos/*.mp4
+          if-no-files-found: warn
+
+      - name: Dump container logs on failure
+        if: failure() && matrix.leg != 'none'
+        run: |
+          docker compose $COMPOSE_FILES -p $PROJECT logs --since 10m \
+            backend mock-server nginx kratos || true
+
   beta_android:
     needs: [find_latest_version, lint, unit_test]
     if: ${{ !inputs.tests_only }}
@@ -468,7 +713,7 @@ jobs:
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
 
   promote_android:
-    needs: [find_latest_version, beta_android, android_e2e]
+    needs: [find_latest_version, beta_android, android_e2e, android_suites]
     if: ${{ !inputs.tests_only }}
     uses: ./.github/workflows/x_deploy_base_mobile_android.yml
     with:
@@ -486,7 +731,7 @@ jobs:
   # shared Dart business logic (dashboards, routing, API layer), not the Android
   # shell, so a failure there means the iOS build is broken in the same way.
   promote_ios:
-    needs: [find_latest_version, beta_ios, android_e2e]
+    needs: [find_latest_version, beta_ios, android_e2e, android_suites]
     if: ${{ !inputs.tests_only }}
     uses: ./.github/workflows/x_deploy_base_mobile_ios.yml
     with:

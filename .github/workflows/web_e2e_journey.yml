@@ -4,6 +4,10 @@
 # WonderMake E2E, run as 11 parallel matrix legs (one per Patrol suite), each
 # against its own isolated docker-compose stack.
 #
+# Plus the suites (jobs suite_plan + suites at the end): one leg per "leg" named
+# in wonderWhy's functional-test/suites/*.json, found at run time, so a new
+# suite needs no edit here.
+#
 # The driver-advance leg's journey (OCR + HDFC payout) runs without touching a
 # real external provider: a single dummy mock-server container fakes both. See
 # functional-test/mock_server in the wonderWhy repo. The WonderMake leg uses the
@@ -456,6 +460,215 @@ jobs:
           if [ "${{ matrix.needs_mock }}" = "true" ]; then
             SERVICES="$SERVICES mock-server"
           fi
+          docker compose $COMPOSE_FILES -p $PROJECT logs --tail 300 $SERVICES || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose $COMPOSE_FILES -p $PROJECT down -v
+
+  # ---------------------------------------------------------------------------
+  # Suites: every functional-test/suites/<suite>.json with "app": "web" in the
+  # wonderWhy ref under test. Suites that share a "leg" run on one stack, each
+  # seeded in turn, then one Patrol build runs all their tests. A new suite
+  # needs no edit here: file format and grouping are in
+  # .github/actions/e2e_suites/e2e_suites.sh. With no web suite the run job
+  # is skipped.
+  suite_plan:
+    name: Web E2E Suites (plan)
+    runs-on: ubuntu-latest
+    outputs:
+      legs: ${{ steps.legs.outputs.legs }}
+      has_legs: ${{ steps.legs.outputs.has_legs }}
+    steps:
+      - name: Check out pipelines repo for actions
+        uses: actions/checkout@v5
+
+      - name: Check out the suite files
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.ref || 'main' }}
+          path: wonderWhy
+          fetch-depth: 1
+          sparse-checkout: functional-test/suites
+
+      - name: Group the web suites into legs
+        id: legs
+        uses: ./.github/actions/e2e_suites
+        with:
+          suites_dir: wonderWhy/functional-test/suites
+          app: web
+
+  suites:
+    needs: suite_plan
+    if: needs.suite_plan.outputs.has_legs == 'true'
+    # Same pin and reason as the journey job above (playwright on 26.04).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.suite_plan.outputs.legs) }}
+    name: Web E2E Suite (${{ matrix.leg }})
+    env:
+      COMPOSE_FILES: >-
+        ${{ matrix.mock && '-f compose.yml -f compose.local.yml -f compose.mock.yml'
+                        || '-f compose.yml -f compose.local.yml' }}
+      PROJECT: suite-${{ matrix.leg }}
+      # Same as the journey job: single-tenant runner, nginx on 80, db on 15432.
+      WEB_PORT: 80
+      DB_PORT: 15432
+    steps:
+      - name: Checkout wonderWhy (code + compose live here)
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.ref || 'main' }}
+          fetch-depth: 1
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.3"
+          channel: stable
+          cache: true
+
+      # Node 22 for `npx playwright install` only; see the journey job.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Activate Patrol CLI
+        run: dart pub global activate patrol_cli 4.7.0
+
+      - name: Bring up the stack (mock overlay ${{ matrix.mock }})
+        env:
+          MOCK: ${{ matrix.mock }}
+        run: |
+          EXTRA=""
+          if [ "$MOCK" = "true" ]; then EXTRA="mailpit"; fi
+          docker compose $COMPOSE_FILES -p $PROJECT up -d --wait db localstack $EXTRA
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name margin
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting_dlq.fifo --attributes FifoQueue=true
+          docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+            awslocal sqs create-queue --queue-name gl_posting.fifo \
+            --attributes FifoQueue=true,DeduplicationScope=messageGroup,FifoThroughputLimit=perMessageGroupId
+          if [ "$MOCK" = "true" ]; then
+            docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
+              awslocal s3 mb s3://localbucket
+            docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
+              kratos backend mock-server nginx
+          else
+            docker compose $COMPOSE_FILES -p $PROJECT up -d --build \
+              kratos backend nginx
+          fi
+
+      - name: Wait for backend
+        working-directory: functional-test
+        env:
+          BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
+        run: ./bin/wait-for-backend.sh
+
+      # One run id for the whole leg: the seeds name their rows after it and
+      # the tests rebuild the same names. Each suite also puts its own prefix
+      # in every name, since the leg's suites share this stack.
+      - name: Fix the run id (E2E_RUN)
+        run: echo "E2E_RUN=$(date +%s)" >> "$GITHUB_ENV"
+
+      # Same pattern as the journey's seed step (the Dart VM does not exit
+      # after the seed commits), once per suite, in file order. The marker
+      # "[seed-<suite>] done" is each seed's verdict.
+      - name: Seed the leg's suites (${{ matrix.suites }})
+        working-directory: functional-test
+        env:
+          SEEDS: ${{ matrix.seeds }}
+          BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
+          KRATOS_ADMIN_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/admin
+          KRATOS_PUBLIC_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/public
+          DB_HOST: localhost
+        run: |
+          set +e
+          dart pub get || exit 1
+          for pair in $SEEDS; do
+            name=${pair%%=*}
+            seed=${pair#*=}
+            log=/tmp/seed-$name.log
+            echo "::group::seed $name ($seed, E2E_RUN=$E2E_RUN)"
+            dart run "$seed" > "$log" 2>&1 &
+            pid=$!
+            for i in $(seq 1 120); do
+              grep -q "seed-$name] done" "$log" && break
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 2
+            done
+            cat "$log"
+            kill "$pid" 2>/dev/null
+            pkill -f "$seed" 2>/dev/null || true
+            echo "::endgroup::"
+            if ! grep -q "seed-$name] done" "$log"; then
+              echo "::error::seed $name never printed [seed-$name] done"
+              exit 1
+            fi
+          done
+
+      - name: Install Playwright Chromium (match patrol web_runner)
+        timeout-minutes: 10
+        run: npx --yes playwright@1.56.0 install chromium
+
+      # Flags as in the journey job. Video only for a failing test.
+      # --web-timeout: 15 min per test file; a suite is meant to take 5-10.
+      - name: Patrol leg ${{ matrix.leg }} (UI)
+        working-directory: flutter/apps/wondermove_web
+        env:
+          LANG: en_US.UTF-8
+          LANGUAGE: en_US:en
+          LC_ALL: en_US.UTF-8
+          TARGETS: ${{ matrix.targets }}
+          SUITE_TZ: ${{ matrix.timezone }}
+        run: |
+          sed -i 's#<base href="/new/">#<base href="/">#' web/index.html
+          flutter pub get
+          export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
+          TZ_ARGS=""
+          if [ -n "$SUITE_TZ" ]; then TZ_ARGS="--web-timezone $SUITE_TZ"; fi
+          PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
+            --target "$TARGETS" \
+            --web-port 3005 \
+            --dart-define=ENV=local --dart-define=E2E=true \
+            "--dart-define=E2E_RUN=$E2E_RUN" \
+            --web-headless true --web-server-timeout 600 \
+            --web-video retain-on-failure --web-results-dir "$PWD/test-results" \
+            --web-timeout 900000 \
+            $TZ_ARGS \
+            --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
+            --verbose
+
+      - name: Upload Patrol report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: suite-${{ matrix.leg }}-report
+          path: flutter/apps/wondermove_web/playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Patrol video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: suite-${{ matrix.leg }}-video
+          path: flutter/apps/wondermove_web/test-results/**/*.webm
+          if-no-files-found: ignore
+
+      - name: Dump container logs on failure
+        if: failure()
+        env:
+          MOCK: ${{ matrix.mock }}
+        run: |
+          SERVICES="backend nginx kratos"
+          if [ "$MOCK" = "true" ]; then SERVICES="$SERVICES mock-server"; fi
           docker compose $COMPOSE_FILES -p $PROJECT logs --tail 300 $SERVICES || true
 
       - name: Tear down

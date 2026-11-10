@@ -1,0 +1,33 @@
+name: E2E suites
+description: >-
+  Turn wonderWhy's functional-test/suites/*.json into CI legs for one app
+  (web or android). Suites that share a "leg" run on one stack. File format
+  and the matrix live in e2e_suites.sh; its tests in e2e_suites.test.sh.
+
+inputs:
+  suites_dir:
+    description: functional-test/suites of a wonderWhy checkout
+    required: true
+  app:
+    description: "web or android"
+    required: true
+
+outputs:
+  legs:
+    description: >-
+      JSON list for a matrix include; one dummy {"leg":"none"} entry when there
+      is no suite for the app, so the matrix is never empty
+    value: ${{ steps.legs.outputs.legs }}
+  has_legs:
+    description: '"true" when at least one suite exists for the app'
+    value: ${{ steps.legs.outputs.has_legs }}
+
+runs:
+  using: composite
+  steps:
+    - id: legs
+      shell: bash
+      env:
+        SUITES_DIR: ${{ inputs.suites_dir }}
+        APP: ${{ inputs.app }}
+      run: bash "$GITHUB_ACTION_PATH/e2e_suites.sh" "$SUITES_DIR" "$APP" | tee -a "$GITHUB_OUTPUT"
