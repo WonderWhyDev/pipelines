@@ -1,0 +1,16 @@
+[
+  {
+    "name": "journeys",
+    "seed_cmd": "dart run tool/seed_mobile.dart",
+    "seed_marker": "seed-mobile] done",
+    "targets": "--target patrol_test/journey/driver_test.dart --target patrol_test/journey/operations_test.dart",
+    "about": "The driver and operations journeys: two suites off one seed, in one emulator boot (boot is the expensive part)."
+  },
+  {
+    "name": "driver_check",
+    "seed_cmd": "dart run tool/seed_driver_check.dart",
+    "seed_marker": "seed-driver-check] done",
+    "targets": "--target patrol_test/driver_check/driver_check_test.dart",
+    "about": "Driver Check for a normal company: every photo and the tyre video go from the phone straight to the stack's S3 (localstack), then the test reads both checks and every stored file back."
+  }
+]

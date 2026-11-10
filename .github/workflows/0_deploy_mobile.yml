@@ -22,6 +22,13 @@ on:
         description: 'Skip every store deploy job'
         type: boolean
         default: false
+      # 1_Branch_Check's plan: lint, unit, e2e:<leg> (legs in
+      # .github/legs/android_e2e.json), suite:<leg>; e2e:* and suite:* = every
+      # leg of that kind.
+      only:
+        description: 'Space-separated jobs and legs to run; empty = all'
+        type: string
+        default: ''
 
 jobs:
   find_latest_version:
@@ -45,6 +52,7 @@ jobs:
 
   lint:
     needs: find_latest_version
+    if: ${{ !inputs.only || contains(format(' {0} ', inputs.only), ' lint ') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -92,6 +100,7 @@ jobs:
 
   unit_test:
     needs: find_latest_version
+    if: ${{ !inputs.only || contains(format(' {0} ', inputs.only), ' unit ') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -119,14 +128,14 @@ jobs:
           flutter test
 
   # Android E2E — every mobile Patrol suite, on a real emulator, against
-  # OFFLINE mocks. Two matrix legs run in parallel, each on its own runner with
-  # its own stack and seed (fail-fast off, so one red leg never cancels the
-  # other):
+  # OFFLINE mocks. The legs (.github/legs/android_e2e.json) run in parallel, each
+  # on its own runner with its own stack and seed (fail-fast off, so one red leg
+  # never cancels the other):
   #   - journeys:     the driver and operations journeys (seed_mobile.dart)
   #   - driver_check: Driver Check, getting in then leaving, for a normal
   #                   company (seed_driver_check.dart)
-  # Starts right off find_latest_version, alongside lint and unit_test — it does
-  # not wait for lint. It does NOT gate the beta deploys (beta ships to testers
+  # android_suite_plan picks them (all, or the ones the "only" input names).
+  # Runs alongside lint and unit_test — it does not wait for lint. It does NOT gate the beta deploys (beta ships to testers
   # regardless); it gates the two production promotions — a red leg blocks
   # promote_android/promote_ios.
   #
@@ -152,26 +161,14 @@ jobs:
   # in the web journey — the backend calls them server-side, so the emulator
   # needs no knowledge of them.
   android_e2e:
-    needs: [find_latest_version]
+    needs: [find_latest_version, android_suite_plan]
+    if: needs.android_suite_plan.outputs.has_e2e_legs == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Two suites off one seed, in one emulator boot (boot is the expensive
-          # part).
-          - name: journeys
-            seed_cmd: dart run tool/seed_mobile.dart
-            seed_marker: "seed-mobile] done"
-            targets: --target patrol_test/journey/driver_test.dart --target patrol_test/journey/operations_test.dart
-          # Driver Check for a normal company: every photo and the tyre video
-          # go from the phone straight to the stack's S3 (localstack), then the
-          # test reads both checks and every stored file back.
-          - name: driver_check
-            seed_cmd: dart run tool/seed_driver_check.dart
-            seed_marker: "seed-driver-check] done"
-            targets: --target patrol_test/driver_check/driver_check_test.dart
+        include: ${{ fromJSON(needs.android_suite_plan.outputs.e2e_legs) }}
     name: Android E2E (${{ matrix.name }})
     env:
       COMPOSE_FILES: "-f compose.yml -f compose.local.yml -f compose.mock.yml"
@@ -435,19 +432,32 @@ jobs:
           docker compose $COMPOSE_FILES -p $PROJECT logs --since 10m \
             backend mock-server nginx kratos || true
 
+  # Which Android E2E legs run: every leg in .github/legs/android_e2e.json and
+  # every suite leg, or only the ones the "only" input names.
   # Suites: every functional-test/suites/<suite>.json with "app": "android" in
   # the commit under test. Suites that share a "leg" run in one emulator boot on
   # one stack, each seeded in turn. A new suite needs no edit here: file format
   # and grouping are in .github/actions/e2e_suites/e2e_suites.sh.
   android_suite_plan:
+    name: Android E2E (plan)
     needs: [find_latest_version]
     runs-on: ubuntu-latest
     outputs:
+      e2e_legs: ${{ steps.e2e.outputs.legs }}
+      has_e2e_legs: ${{ steps.e2e.outputs.has_legs }}
       legs: ${{ steps.legs.outputs.legs }}
       has_legs: ${{ steps.legs.outputs.has_legs }}
     steps:
       - name: Check out pipelines repo for actions
         uses: actions/checkout@v5
+
+      - name: Pick the Android E2E legs
+        id: e2e
+        uses: ./.github/actions/pick_legs
+        with:
+          legs_file: .github/legs/android_e2e.json
+          unit: e2e
+          only: ${{ inputs.only }}
 
       - name: Check out the suite files
         uses: actions/checkout@v5
@@ -465,6 +475,7 @@ jobs:
         with:
           suites_dir: wonderWhy/functional-test/suites
           app: android
+          only: ${{ inputs.only }}
 
   # Never skipped, so the store promotions can need it: with no android suite
   # the matrix is one "none" leg whose steps all skip. Steps mirror

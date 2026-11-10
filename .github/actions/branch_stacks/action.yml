@@ -1,12 +1,16 @@
 name: Branch stacks
 description: >-
-  Pick the exact commit of a wonderWhy branch and which test pipelines it needs,
-  from the paths it changed since it left main. The folder map lives in
-  branch_stacks.sh; its tests in branch_stacks.test.sh.
+  Pick the exact commit of a wonderWhy branch and which tests it needs, down to
+  the job and the E2E leg, from the paths it changed since it left main. A path
+  no rule knows fails the step. The folder map lives in branch_stacks.sh; its
+  tests in branch_stacks.test.sh.
 
 inputs:
   repo_path:
-    description: wonderWhy checkout with full history (filter blob:none is enough)
+    description: >-
+      wonderWhy checkout with full history (filter blob:none is enough) and the
+      contents of functional-test/ and flutter/apps/*/patrol_test/ (sparse is
+      enough), which say which legs use a changed test file
     required: true
   scope:
     description: "changed: only the parts the branch touched; all: every part"
@@ -19,15 +23,27 @@ outputs:
   backend:
     description: Run the backend tests
     value: ${{ steps.map.outputs.backend }}
+  backend_only:
+    description: Which backend jobs and legs run (the pipeline's only input); empty = all
+    value: ${{ steps.map.outputs.backend_only }}
   web:
     description: Run the web tests
     value: ${{ steps.map.outputs.web }}
+  web_only:
+    description: Which web jobs run (the pipeline's only input); empty = all
+    value: ${{ steps.map.outputs.web_only }}
   e2e:
-    description: Run the web E2E journey
+    description: Run the web E2E journeys and suites
     value: ${{ steps.map.outputs.e2e }}
+  e2e_only:
+    description: Which web E2E legs run (the workflow's only input); empty = all
+    value: ${{ steps.map.outputs.e2e_only }}
   mobile:
     description: Run the mobile tests
     value: ${{ steps.map.outputs.mobile }}
+  mobile_only:
+    description: Which mobile jobs and legs run (the pipeline's only input); empty = all
+    value: ${{ steps.map.outputs.mobile_only }}
   agents:
     description: Run the agents tests
     value: ${{ steps.map.outputs.agents }}
@@ -43,4 +59,11 @@ runs:
       working-directory: ${{ inputs.repo_path }}
       env:
         SCOPE: ${{ inputs.scope }}
-      run: bash "$GITHUB_ACTION_PATH/branch_stacks.sh" "$SCOPE" | tee -a "$GITHUB_OUTPUT"
+      # Only key=value lines are outputs; the rest (an ::error:: line) is for the
+      # log. A path the map does not know exits 3 and fails the step.
+      run: |
+        code=0
+        bash "$GITHUB_ACTION_PATH/branch_stacks.sh" "$SCOPE" >"$RUNNER_TEMP/branch_stacks.out" || code=$?
+        cat "$RUNNER_TEMP/branch_stacks.out"
+        grep -E '^[a-z0-9_]+=' "$RUNNER_TEMP/branch_stacks.out" >>"$GITHUB_OUTPUT" || true
+        exit "$code"

@@ -3,9 +3,14 @@
 # It calls the deploy pipelines with tests_only: true, so each test job is
 # defined once, in its own pipeline. Their deploy and store jobs are skipped.
 #
-# scope changed (default) runs only the parts the branch touched since it left
-# main; the folder map is .github/actions/branch_stacks/branch_stacks.sh.
-# scope all runs every part. The web E2E journey runs once here, not once per
+# scope changed (default) runs only what the paths the branch changed since it
+# left main need, down to the job and the E2E leg: a changed suite runs its own
+# leg and the app's lint, not every pipeline. Each part gets an "only" list of
+# its jobs and legs (empty = all of them). The folder map is
+# .github/actions/branch_stacks/branch_stacks.sh, the leg lists .github/legs.
+# A path the map has no rule for (a new folder) turns the plan red: someone
+# decides what it runs and adds a rule; it never runs everything by default.
+# scope all runs every part, whole. The web E2E runs once here, not once per
 # pipeline.
 #
 # Every part tests the same commit: plan resolves the branch once and passes
@@ -45,17 +50,22 @@ jobs:
     outputs:
       sha: ${{ steps.stacks.outputs.sha }}
       backend: ${{ steps.stacks.outputs.backend }}
+      backend_only: ${{ steps.stacks.outputs.backend_only }}
       web: ${{ steps.stacks.outputs.web }}
+      web_only: ${{ steps.stacks.outputs.web_only }}
       e2e: ${{ steps.stacks.outputs.e2e }}
+      e2e_only: ${{ steps.stacks.outputs.e2e_only }}
       mobile: ${{ steps.stacks.outputs.mobile }}
+      mobile_only: ${{ steps.stacks.outputs.mobile_only }}
       agents: ${{ steps.stacks.outputs.agents }}
       tally: ${{ steps.stacks.outputs.tally }}
     steps:
       - name: Check out pipelines repo for actions
         uses: actions/checkout@v5
 
-      # Full history so the merge base with main is known, but no file contents
-      # (blob:none) and only .gitignore on disk: the diff needs trees, not files.
+      # Full history so the merge base with main is known, but no other file
+      # contents (blob:none): the diff needs trees, not files. On disk only the
+      # test code, which says which legs use a changed test file.
       - name: Check out wonderWhy history
         uses: actions/checkout@v5
         with:
@@ -65,7 +75,10 @@ jobs:
           path: wonderWhy
           fetch-depth: 0
           filter: blob:none
-          sparse-checkout: '.gitignore'
+          sparse-checkout: |
+            .gitignore
+            functional-test/
+            flutter/apps/*/patrol_test/
           sparse-checkout-cone-mode: false
 
       - name: Pick the commit and the parts to test
@@ -83,6 +96,7 @@ jobs:
       branch: ${{ needs.plan.outputs.sha }}
       tests_only: true
       skip_e2e: true
+      only: ${{ needs.plan.outputs.backend_only }}
     secrets: inherit
 
   web:
@@ -93,6 +107,7 @@ jobs:
       branch: ${{ needs.plan.outputs.sha }}
       tests_only: true
       skip_e2e: true
+      only: ${{ needs.plan.outputs.web_only }}
     secrets: inherit
 
   e2e_journey:
@@ -101,6 +116,7 @@ jobs:
     uses: ./.github/workflows/web_e2e_journey.yml
     with:
       ref: ${{ needs.plan.outputs.sha }}
+      only: ${{ needs.plan.outputs.e2e_only }}
     secrets:
       REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
       GHRC_SECRET_KEY: ${{ secrets.GHRC_SECRET_KEY }}
@@ -112,6 +128,7 @@ jobs:
     with:
       branch: ${{ needs.plan.outputs.sha }}
       tests_only: true
+      only: ${{ needs.plan.outputs.mobile_only }}
     secrets: inherit
 
   agents:

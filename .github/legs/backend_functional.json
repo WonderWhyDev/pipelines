@@ -1,0 +1,36 @@
+[
+  {
+    "name": "tenant_and_attendance",
+    "targets": "test/api/tenant_api_test.dart test/api/vehicle_attendance_test.dart",
+    "about": "tenant_api has no destructive resets; vehicle_attendance scopes its resets by its own VAT vehicle-number prefix. Neither can collide with the other, and both are sub-2-second suites, so they share a leg rather than each paying the full bring-up cost alone."
+  },
+  {
+    "name": "own_vehicle_trip",
+    "targets": "test/api/own_vehicle_trip_test.dart"
+  },
+  {
+    "name": "mileage_boundary",
+    "targets": "test/api/mileage_recalc_boundary_test.dart",
+    "about": "mileage_recalc_test.dart was split into the 4 mileage_* files because it alone was ~88% of this job's test time. Each file gets its own isolated compose stack and DB, so its resetMileageData() (tenant-wide DELETE on fuel/mileage rows) can never collide with another leg."
+  },
+  {
+    "name": "mileage_edit",
+    "targets": "test/api/mileage_recalc_edit_test.dart",
+    "about": "One of the 4 mileage_* legs; see mileage_boundary."
+  },
+  {
+    "name": "mileage_trip",
+    "targets": "test/api/mileage_recalc_trip_test.dart",
+    "about": "One of the 4 mileage_* legs; see mileage_boundary."
+  },
+  {
+    "name": "mileage_task",
+    "targets": "test/api/mileage_recalc_task_test.dart",
+    "about": "One of the 4 mileage_* legs; see mileage_boundary."
+  },
+  {
+    "name": "tyre_lifecycle",
+    "targets": "test/api/tyre_lifecycle_test.dart",
+    "about": "Inventory bill -> tyres -> fitment -> bill delete refusal, across vehicleService, tyre and accounts on the real stack."
+  }
+]

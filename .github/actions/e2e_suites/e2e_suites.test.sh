@@ -71,6 +71,41 @@ suite ist_b '{"app": "web", "leg": "ist", "timezone": "Asia/Kolkata"}'
 expect "one timezone per leg" web 'legs=[{"leg":"ist","mock":false,"timezone":"Asia/Kolkata","suites":"ist_a ist_b","seeds":"ist_a=tool/seed_ist_a.dart ist_b=tool/seed_ist_b.dart","targets":"patrol_test/suites/ist_a_test.dart,patrol_test/suites/ist_b_test.dart"}]
 has_legs=true'
 
+echo "only"
+# legs_only <app> <only>: the picked leg names, or ERR
+legs_only() {
+  local got
+  got=$(bash "$SCRIPT" "$TMP/s" "$1" "$2" 2>/dev/null) || {
+    echo ERR
+    return
+  }
+  printf '%s\n' "$got" | sed -n 's/^legs=//p' | jq -r 'map(.leg) | join(" ")'
+}
+# expect_only "<desc>" <app> "<only>" "<want leg names>"
+expect_only() {
+  local got
+  got=$(legs_only "$2" "$3")
+  if [ "$got" = "$4" ]; then ok "$1"; else bad "$1: want [$4] got [$got]"; fi
+}
+fresh
+suite toll '{"app": "web", "leg": "toll_gst"}'
+suite gst '{"app": "web", "leg": "toll_gst"}'
+suite smoke '{"app": "web", "leg": "smoke"}'
+suite m_trips '{"app": "android", "leg": "mobile_trips"}'
+expect_only "empty only: every leg" web "" "smoke toll_gst"
+expect_only "suite:*: every leg" web "suite:*" "smoke toll_gst"
+expect_only "one named leg" web "suite:toll_gst" "toll_gst"
+expect_only "other units are ignored" web "journey:lease lint suite:smoke" "smoke"
+expect_only "only without suite units: no leg" web "journey:lease" "none"
+expect_only "android picks its own legs" android "lint suite:mobile_trips" "mobile_trips"
+expect_only "a leg of the other app: error" web "suite:mobile_trips" "ERR"
+expect_only "unknown leg: error" web "suite:nope" "ERR"
+got=$(bash "$SCRIPT" "$TMP/s" web "journey:lease")
+if [ "$got" = "$NONE" ]; then ok "no leg picked: the dummy leg, has_legs=false"; else bad "no leg picked: got [$got]"; fi
+fresh
+expect_only "no suite file, suite named: error" web "suite:toll_gst" "ERR"
+expect_only "no suite file, suite:*: the dummy leg" web "suite:*" "none"
+
 echo "errors"
 fresh
 suite tz_a '{"app": "web", "leg": "mixed", "timezone": "Asia/Kolkata"}'

@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # Turn wonderWhy's functional-test/suites/*.json into CI legs for one app.
 #
-#   bash e2e_suites.sh <suites_dir> <web|android>
+#   bash e2e_suites.sh <suites_dir> <web|android> [only]
+#
+# only: space-separated units from 1_Branch_Check's plan. Empty: every leg.
+# Otherwise a leg runs when "only" names "suite:*" or "suite:<leg>"; other
+# units ("lint", "journey:x") are for other jobs. A "suite:<leg>" that no suite
+# of this app has is an error, so a picked leg cannot vanish silently.
 #
 # Prints two GITHUB_OUTPUT lines:
 #   legs=<JSON list for a matrix include>
@@ -32,8 +37,9 @@
 #            android: "--target patrol_test/suites/a_test.dart --target ...")
 set -euo pipefail
 
-dir=${1:?usage: e2e_suites.sh <suites_dir> <web|android>}
-app=${2:?usage: e2e_suites.sh <suites_dir> <web|android>}
+dir=${1:?usage: e2e_suites.sh <suites_dir> <web|android> [only]}
+app=${2:?usage: e2e_suites.sh <suites_dir> <web|android> [only]}
+only=${3:-}
 case "$app" in
   web | android) ;;
   *) echo "e2e_suites: app must be web or android, got '$app'" >&2; exit 2 ;;
@@ -57,13 +63,19 @@ if [ -n "$files" ]; then
 fi
 
 if [ -z "$files" ]; then
+  case " $only " in
+    *" suite:"[!*]*)
+      echo "e2e_suites: only names suite legs ($only), but $dir has no suite file" >&2
+      exit 1
+      ;;
+  esac
   echo 'legs=[{"leg":"none"}]'
   echo 'has_legs=false'
   exit 0
 fi
 
 # shellcheck disable=SC2086 # names were checked above: no spaces or globs
-jq -nr --arg app "$app" '
+jq -nr --arg app "$app" --arg only "$only" '
   def check(cond; msg): if cond then . else error(msg) end;
   [inputs | {name: (input_filename | split("/") | last | rtrimstr(".json")), spec: .}]
   | map(
@@ -83,10 +95,9 @@ jq -nr --arg app "$app" '
       | {name: $n, app, leg, mock: (.mock // false), timezone: (.timezone // "")}
     )
   | map(select(.app == $app))
-  | if length == 0 then
-      "legs=[{\"leg\":\"none\"}]", "has_legs=false"
-    else
-      (group_by(.leg)
+  | (if length == 0 then []
+     else
+       group_by(.leg)
        | map(
            . as $s
            | ($s | map(.timezone) | unique) as $tz
@@ -103,7 +114,15 @@ jq -nr --arg app "$app" '
                          else ($s | map("--target patrol_test/suites/\(.name)_test.dart") | join(" "))
                          end)
              }
-         )) as $legs
-      | "legs=\($legs | tojson)", "has_legs=true"
+         )
+     end) as $all
+  | [$only | splits(" +") | select(startswith("suite:")) | ltrimstr("suite:")] as $want
+  | ($want - ["*"] - ($all | map(.leg))) as $missing
+  | check($missing == []; "only names suite leg(s) \($missing | join(", ")) that no \($app) suite has")
+  | (if $only == "" or ($want | index("*")) then $all
+     else $all | map(select(.leg as $l | $want | index($l)))
+     end) as $legs
+  | if ($legs | length) == 0 then "legs=[{\"leg\":\"none\"}]", "has_legs=false"
+    else "legs=\($legs | tojson)", "has_legs=true"
     end
 ' $files

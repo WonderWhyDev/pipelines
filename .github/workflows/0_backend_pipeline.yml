@@ -25,6 +25,12 @@ on:
         description: 'Skip the web E2E journey (the caller runs it once itself)'
         type: boolean
         default: false
+      # 1_Branch_Check's plan: lint, unit, integration, functional:<leg> (legs in
+      # .github/legs/backend_functional.json), functional:* = every leg.
+      only:
+        description: 'Space-separated jobs and legs to run; empty = all'
+        type: string
+        default: ''
 
 jobs:
   find_latest_version:
@@ -48,6 +54,7 @@ jobs:
 
   lint:
     needs: find_latest_version
+    if: ${{ !inputs.only || contains(format(' {0} ', inputs.only), ' lint ') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -121,6 +128,7 @@ jobs:
 
   unit_test:
     needs: find_latest_version
+    if: ${{ !inputs.only || contains(format(' {0} ', inputs.only), ' unit ') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -207,6 +215,7 @@ jobs:
   # test jobs above (and the commit hook) have no Postgres.
   integration_test:
     needs: find_latest_version
+    if: ${{ !inputs.only || contains(format(' {0} ', inputs.only), ' integration ') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     name: Integration Tests
@@ -251,8 +260,29 @@ jobs:
       - working-directory: wonderWhy/backend
         run: bun run trun --project integration
 
+  # Which functional legs run: every leg in .github/legs/backend_functional.json,
+  # or only the ones the "only" input names.
+  functional_plan:
+    name: Functional Tests (plan)
+    runs-on: ubuntu-latest
+    outputs:
+      legs: ${{ steps.legs.outputs.legs }}
+      has_legs: ${{ steps.legs.outputs.has_legs }}
+    steps:
+      - name: Check out pipelines repo for actions
+        uses: actions/checkout@v5
+
+      - name: Pick the legs
+        id: legs
+        uses: ./.github/actions/pick_legs
+        with:
+          legs_file: .github/legs/backend_functional.json
+          unit: functional
+          only: ${{ inputs.only }}
+
   functional_test:
-    needs: find_latest_version
+    needs: [find_latest_version, functional_plan]
+    if: needs.functional_plan.outputs.has_legs == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -261,32 +291,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # tenant_api has no destructive resets; vehicle_attendance scopes its
-          # resets by its own VAT vehicle-number prefix — neither can collide
-          # with the other, and both are sub-2-second suites, so they share a
-          # leg rather than each paying the full bring-up cost alone.
-          - name: tenant_and_attendance
-            targets: test/api/tenant_api_test.dart test/api/vehicle_attendance_test.dart
-          - name: own_vehicle_trip
-            targets: test/api/own_vehicle_trip_test.dart
-          # mileage_recalc_test.dart was split into these 4 files (see
-          # wonderWhy commit) because it alone was ~88% of this job's test
-          # time — each file gets its own isolated compose stack/DB here so
-          # its resetMileageData() (tenant-wide DELETE on fuel/mileage rows)
-          # can never collide with another leg.
-          - name: mileage_boundary
-            targets: test/api/mileage_recalc_boundary_test.dart
-          - name: mileage_edit
-            targets: test/api/mileage_recalc_edit_test.dart
-          - name: mileage_trip
-            targets: test/api/mileage_recalc_trip_test.dart
-          - name: mileage_task
-            targets: test/api/mileage_recalc_task_test.dart
-          # Inventory bill -> tyres -> fitment -> bill delete refusal, across
-          # vehicleService, tyre and accounts on the real stack.
-          - name: tyre_lifecycle
-            targets: test/api/tyre_lifecycle_test.dart
+        # One leg per entry in .github/legs/backend_functional.json that
+        # functional_plan picked. Each leg runs on its own runner with its own
+        # compose stack and DB, so destructive resets never collide.
+        include: ${{ fromJSON(needs.functional_plan.outputs.legs) }}
     name: Functional Tests (${{ matrix.name }})
     env:
       PROJECT: ci-${{ matrix.name }}

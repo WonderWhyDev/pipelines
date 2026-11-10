@@ -1,0 +1,116 @@
+[
+  {
+    "name": "driver_advance",
+    "target": "patrol_test/journey/driver_advance_journey_test.dart",
+    "report_name": "journey-playwright-report",
+    "seed_cmd": "dart run tool/seed_journey.dart",
+    "seed_marker": "seed-journey] done",
+    "needs_mock": true,
+    "video": "on",
+    "gate": "test/mock/",
+    "about": "OCR + HDFC payout through the UI, against the mock overlay. Its gate (dart test test/mock/) runs first: the HDFC payout through the real backend adapter -> mock -> CBX reference (mTLS + JOSE)."
+  },
+  {
+    "name": "operations",
+    "target": "patrol_test/journey/operations_dashboard_test.dart",
+    "report_name": "operations-playwright-report",
+    "seed_cmd": "dart run tool/seed_operations.dart",
+    "seed_marker": "seed-operations] done",
+    "needs_mock": false,
+    "video": "on",
+    "about": "Read-only dashboard suite: 15 trip variants x 14 summary columns."
+  },
+  {
+    "name": "vehicle_attendance",
+    "target": "patrol_test/journey/vehicle_attendance_test.dart",
+    "report_name": "vehicle-attendance-playwright-report",
+    "seed_cmd": "dart run tool/seed_vehicle_attendance.dart",
+    "seed_marker": "seed-vehicle-attendance] done",
+    "needs_mock": false,
+    "video": "on",
+    "about": "Read-only dashboard suite: 16 vehicles x a full previous-month status walk."
+  },
+  {
+    "name": "no_driver",
+    "target": "patrol_test/journey/no_driver_test.dart",
+    "report_name": "no-driver-playwright-report",
+    "seed_cmd": "dart run tool/seed_no_driver.dart",
+    "seed_marker": "seed-no-driver] done",
+    "needs_mock": false,
+    "video": "on",
+    "about": "The whole No Driver feature through the UI: 13 layers over 14 seeded trucks (Mark No Driver, Assign Driver, pre-trip advance, retire)."
+  },
+  {
+    "name": "driver_onboarding",
+    "target": "patrol_test/journey/driver_onboarding_test.dart",
+    "report_name": "driver-onboarding-playwright-report",
+    "seed_cmd": "dart run tool/seed_driver_onboarding.dart",
+    "seed_marker": "seed-driver-onboarding] done",
+    "needs_mock": false,
+    "video": "on",
+    "about": "Driver onboarding through the UI: two new drivers sent for a test drive from the driver form, the maintenance and HR approvals, the same person refused the operations approval, an HR rejection, and a second login (the operations head, one branch only) whose approval creates the driver. The seed switches driver onboarding on for the master tenant; this leg's stack is its own, so it is not switched off again (make driver-onboarding-host does that locally)."
+  },
+  {
+    "name": "container_trip",
+    "target": "patrol_test/journey/container_trip_test.dart,patrol_test/journey/monthly_hire_test.dart",
+    "report_name": "container-trip-playwright-report",
+    "seed_cmd": "dart run tool/seed_container_trips.dart",
+    "seed_marker": "seed-container-trips] done",
+    "needs_mock": false,
+    "video": "on",
+    "about": "Both container journeys through the UI, in one Patrol bundle. Detachable Container Trailer: a container price point (1x20, base amount up to a base qty, extra per ton), a Bulker on that lane left unpriced, the container trip by Manual Entry priced by size and load, then its container number and halt charge on Trip Status (container_trip_test.dart, CT_RUN). Attached Container Carrier on Monthly Hire: an agreement, a vehicle added later, the day-wise trip grid with future days locked, the extra-km amount and the list totals (monthly_hire_test.dart, MH_RUN). seed_container_trips.dart runs both seeds. Nothing reaches OCR, HDFC or S3."
+  },
+  {
+    "name": "tb_bills",
+    "target": "patrol_test/journey/tb_bills_test.dart",
+    "report_name": "tb-bills-playwright-report",
+    "seed_cmd": "dart run tool/seed_tb_bills.dart",
+    "seed_marker": "seed-tb-bills] done",
+    "needs_mock": true,
+    "video": "on",
+    "about": "Transporter and fuel bills through the UI: a market trip from Manual Entry, its initial pay, a fill at the bunk, the held final pay, a fuel bill and a transporter bill, both paid in cash. The mock overlay is on only for S3 (the acknowledgement image); nothing reaches OCR or HDFC."
+  },
+  {
+    "name": "transporter_portal",
+    "target": "patrol_test/journey/transporter_portal_test.dart",
+    "report_name": "transporter-portal-playwright-report",
+    "seed_cmd": "dart run tool/seed_transporter_portal.dart",
+    "seed_marker": "seed-transporter-portal] done",
+    "needs_mock": true,
+    "video": "on",
+    "about": "The transporter portal as a market transporter sees it while the tenant pays transporters through bills: the seed makes the staff side through the API (five trips in each state, an advance on account, an approved incentive and deduction, two bills, one paid in cash), then the transporter's own login checks every tab and raises its own invoice. Same stack as tb_bills."
+  },
+  {
+    "name": "lease",
+    "target": "patrol_test/journey/lease_test.dart",
+    "report_name": "lease-playwright-report",
+    "seed_cmd": "dart run tool/seed_lease.dart",
+    "seed_marker": "seed-lease] done",
+    "needs_mock": true,
+    "video": "on",
+    "about": "A truck on lease through a whole month through the UI: put on lease, a trip with a driver advance and a fill, a workshop day and a No Driver day, unload, the rent bill draft with its cut days, confirm, pay in cash, a locked advance, then the owner's own login sees the bill in the portal. Every date is in the previous month (IST), so the bill can be confirmed. Same stack as tb_bills; the mock overlay is on only for localstack (the GL queues)."
+  },
+  {
+    "name": "trading",
+    "target": "patrol_test/journey/trading_test.dart",
+    "report_name": "trading-playwright-report",
+    "seed_cmd": "dart run tool/seed_trading.dart",
+    "seed_marker": "seed-trading] done",
+    "needs_mock": false,
+    "video": "on",
+    "about": "The trading module through the UI: masters, settings, two sales bills and their trips (issue, edit, cancel, trip retry). The seeded firm has e-invoice off, so nothing reaches GSTZen."
+  },
+  {
+    "name": "wondermake",
+    "app_dir": "flutter/apps/wondermake_web",
+    "base_href": "/make/",
+    "target": "patrol_test",
+    "report_name": "wondermake-playwright-report",
+    "seed_cmd": "dart run tool/seed_make.dart",
+    "seed_marker": "seed-make] done",
+    "needs_mock": true,
+    "video": "retain-on-failure",
+    "extra_args": "--web-timezone Asia/Kolkata",
+    "about": "WonderMake (stock issue and delivery-bill inbound) web app: every file under its patrol_test. The tests fake the Bluetooth scale (Web Serial), the file chooser and the S3 photo PUT inside the browser. Scanning a delivery bill goes through the backend's OCR, so the mock overlay (OCR mock + S3 bucket) is on. The browser runs on IST, like the people issuing stock. Many short tests, so video only for the ones that fail."
+  }
+]

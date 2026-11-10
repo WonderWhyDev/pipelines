@@ -1,0 +1,38 @@
+name: Pick legs
+description: >-
+  Pick which legs of one test matrix run, from a legs file in .github/legs and
+  an "only" list (1_Branch_Check's plan). Empty "only" runs every leg. The
+  rules live in pick_legs.sh; its tests in pick_legs.test.sh.
+
+inputs:
+  legs_file:
+    description: A JSON list of legs in .github/legs
+    required: true
+  unit:
+    description: 'The word for these legs in "only": journey, functional, e2e'
+    required: true
+  only:
+    description: 'Space-separated units, e.g. "journey:lease suite:toll_gst"; empty = every leg'
+    required: false
+    default: ''
+
+outputs:
+  legs:
+    description: >-
+      JSON list for a matrix include; one dummy {"name":"none"} entry when no
+      leg is picked, so the matrix is never empty
+    value: ${{ steps.pick.outputs.legs }}
+  has_legs:
+    description: '"true" when at least one leg is picked'
+    value: ${{ steps.pick.outputs.has_legs }}
+
+runs:
+  using: composite
+  steps:
+    - id: pick
+      shell: bash
+      env:
+        LEGS_FILE: ${{ inputs.legs_file }}
+        UNIT: ${{ inputs.unit }}
+        ONLY: ${{ inputs.only }}
+      run: bash "$GITHUB_ACTION_PATH/pick_legs.sh" "$LEGS_FILE" "$UNIT" "$ONLY" | tee -a "$GITHUB_OUTPUT"

@@ -11,6 +11,12 @@ inputs:
   app:
     description: "web or android"
     required: true
+  only:
+    description: >-
+      Space-separated units from 1_Branch_Check's plan; a leg runs when it
+      names suite:* or suite:<leg>. Empty = every leg.
+    required: false
+    default: ''
 
 outputs:
   legs:
@@ -30,4 +36,5 @@ runs:
       env:
         SUITES_DIR: ${{ inputs.suites_dir }}
         APP: ${{ inputs.app }}
-      run: bash "$GITHUB_ACTION_PATH/e2e_suites.sh" "$SUITES_DIR" "$APP" | tee -a "$GITHUB_OUTPUT"
+        ONLY: ${{ inputs.only }}
+      run: bash "$GITHUB_ACTION_PATH/e2e_suites.sh" "$SUITES_DIR" "$APP" "$ONLY" | tee -a "$GITHUB_OUTPUT"

@@ -25,6 +25,12 @@ on:
         description: 'Skip the web E2E journey (the caller runs it once itself)'
         type: boolean
         default: false
+      # 1_Branch_Check's plan: lint:<app>, unit (the unit tests and the coverage
+      # gate). A changed patrol_test file needs only its app's lint here.
+      only:
+        description: 'Space-separated jobs to run; empty = all'
+        type: string
+        default: ''
 
 jobs:
   find_latest_version:
@@ -48,11 +54,17 @@ jobs:
 
   lint:
     needs: find_latest_version
+    if: ${{ !inputs.only || contains(format(' {0} ', inputs.only), ' lint:') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         app: [wondermove_web, wondermake_web]
+        # With an only list, an app's lint runs only when it names lint:<app>.
+        # An exclude value that matches no app ('-') drops nothing.
+        exclude:
+          - app: ${{ (!inputs.only || contains(format(' {0} ', inputs.only), ' lint:wondermove_web ')) && '-' || 'wondermove_web' }}
+          - app: ${{ (!inputs.only || contains(format(' {0} ', inputs.only), ' lint:wondermake_web ')) && '-' || 'wondermake_web' }}
     name: Lint (${{ matrix.app }})
     steps:
       - uses: actions/checkout@v5
@@ -143,6 +155,7 @@ jobs:
 
   unit_test:
     needs: find_latest_version
+    if: ${{ !inputs.only || contains(format(' {0} ', inputs.only), ' unit ') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -189,6 +202,7 @@ jobs:
   # coverage is recomputed from the union of hits on merge).
   unit_test_wondermove:
     needs: find_latest_version
+    if: ${{ !inputs.only || contains(format(' {0} ', inputs.only), ' unit ') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -256,6 +270,7 @@ jobs:
 
   coverage_wondermove:
     needs: [find_latest_version, unit_test_wondermove]
+    if: ${{ !inputs.only || contains(format(' {0} ', inputs.only), ' unit ') }}
     runs-on: ubuntu-latest
     name: Coverage Gate (wondermove_web)
     steps:

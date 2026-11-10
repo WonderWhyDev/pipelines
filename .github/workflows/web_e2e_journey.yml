@@ -4,9 +4,13 @@
 # WonderMake E2E, run as 11 parallel matrix legs (one per Patrol suite), each
 # against its own isolated docker-compose stack.
 #
-# Plus the suites (jobs suite_plan + suites at the end): one leg per "leg" named
-# in wonderWhy's functional-test/suites/*.json, found at run time, so a new
-# suite needs no edit here.
+# Plus the suites (job suites at the end): one leg per "leg" named in
+# wonderWhy's functional-test/suites/*.json, found at run time, so a new suite
+# needs no edit here.
+#
+# The journey legs and their settings live in .github/legs/web_journeys.json.
+# The plan job picks the legs: all of them, or only the ones the "only" input
+# names (1_Branch_Check passes the legs a branch's changes use).
 #
 # The driver-advance leg's journey (OCR + HDFC payout) runs without touching a
 # real external provider: a single dummy mock-server container fakes both. See
@@ -47,12 +51,22 @@ on:
         required: false
         type: string
         default: main
+      only:
+        description: 'Legs to run, e.g. "journey:lease suite:toll_gst"; journey:* or suite:* for all of a kind; empty = every leg'
+        required: false
+        type: string
+        default: ''
   workflow_call:
     inputs:
       ref:
         description: "wonderWhy branch or SHA to test"
         required: true
         type: string
+      only:
+        description: 'Legs to run, e.g. "journey:lease suite:toll_gst"; empty = every leg'
+        required: false
+        type: string
+        default: ''
     secrets:
       REPO_READ_TOKEN:
         required: true
@@ -60,7 +74,50 @@ on:
         required: true
 
 jobs:
+  # Which legs run: every journey in .github/legs/web_journeys.json and every
+  # web suite leg (functional-test/suites/*.json, grouped by
+  # .github/actions/e2e_suites), or only the ones the "only" input names.
+  plan:
+    name: Web E2E (plan)
+    runs-on: ubuntu-latest
+    outputs:
+      journeys: ${{ steps.journeys.outputs.legs }}
+      has_journeys: ${{ steps.journeys.outputs.has_legs }}
+      legs: ${{ steps.legs.outputs.legs }}
+      has_legs: ${{ steps.legs.outputs.has_legs }}
+    steps:
+      - name: Check out pipelines repo for actions
+        uses: actions/checkout@v5
+
+      - name: Pick the journeys
+        id: journeys
+        uses: ./.github/actions/pick_legs
+        with:
+          legs_file: .github/legs/web_journeys.json
+          unit: journey
+          only: ${{ inputs.only }}
+
+      - name: Check out the suite files
+        uses: actions/checkout@v5
+        with:
+          repository: WonderWhyDev/wonderWhy
+          token: ${{ secrets.REPO_READ_TOKEN }}
+          ref: ${{ inputs.ref || 'main' }}
+          path: wonderWhy
+          fetch-depth: 1
+          sparse-checkout: functional-test/suites
+
+      - name: Group the web suites into legs
+        id: legs
+        uses: ./.github/actions/e2e_suites
+        with:
+          suites_dir: wonderWhy/functional-test/suites
+          app: web
+          only: ${{ inputs.only }}
+
   journey:
+    needs: plan
+    if: needs.plan.outputs.has_journeys == 'true'
     # Pinned to 24.04: ubuntu-latest moved to 26.04, and playwright 1.56.0
     # (bundled by patrol 4.9.0) refuses to install chromium there ("does not
     # support chromium on ubuntu26.04-x64", run 40855901008). Playwright 1.61+
@@ -71,142 +128,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # video: Playwright recording mode per leg, uploaded as <name>-video.
-        # off | on | retain-on-failure | on-first-retry. Quoted so YAML never
-        # reads on/off as booleans.
-        include:
-          # OCR + HDFC payout through the UI, against the mock overlay.
-          - name: driver_advance
-            target: patrol_test/journey/driver_advance_journey_test.dart
-            report_name: journey-playwright-report
-            seed_cmd: dart run tool/seed_journey.dart
-            seed_marker: "seed-journey] done"
-            needs_mock: true
-            video: "on"
-          # Read-only dashboard suite: 15 trip variants x 14 summary columns.
-          - name: operations
-            target: patrol_test/journey/operations_dashboard_test.dart
-            report_name: operations-playwright-report
-            seed_cmd: dart run tool/seed_operations.dart
-            seed_marker: "seed-operations] done"
-            needs_mock: false
-            video: "on"
-          # Read-only dashboard suite: 16 vehicles x a full previous-month status walk.
-          - name: vehicle_attendance
-            target: patrol_test/journey/vehicle_attendance_test.dart
-            report_name: vehicle-attendance-playwright-report
-            seed_cmd: dart run tool/seed_vehicle_attendance.dart
-            seed_marker: "seed-vehicle-attendance] done"
-            needs_mock: false
-            video: "on"
-          # The whole No Driver feature through the UI: 13 layers over 14 seeded
-          # trucks (Mark No Driver, Assign Driver, pre-trip advance, retire).
-          - name: no_driver
-            target: patrol_test/journey/no_driver_test.dart
-            report_name: no-driver-playwright-report
-            seed_cmd: dart run tool/seed_no_driver.dart
-            seed_marker: "seed-no-driver] done"
-            needs_mock: false
-            video: "on"
-          # Driver onboarding through the UI: two new drivers sent for a test
-          # drive from the driver form, the maintenance and HR approvals, the
-          # same person refused the operations approval, an HR rejection, and a
-          # second login (the operations head, one branch only) whose approval
-          # creates the driver. The seed switches driver onboarding on for the
-          # master tenant; this leg's stack is its own, so it is not switched
-          # off again (make driver-onboarding-host does that locally).
-          - name: driver_onboarding
-            target: patrol_test/journey/driver_onboarding_test.dart
-            report_name: driver-onboarding-playwright-report
-            seed_cmd: dart run tool/seed_driver_onboarding.dart
-            seed_marker: "seed-driver-onboarding] done"
-            needs_mock: false
-            video: "on"
-          # Both container journeys through the UI, in one Patrol bundle:
-          # - Detachable Container Trailer: a container price point (1x20, base
-          #   amount up to a base qty, extra per ton), a Bulker on that lane
-          #   left unpriced, the container trip by Manual Entry priced by size
-          #   and load, then its container number and halt charge on Trip
-          #   Status (container_trip_test.dart, CT_RUN).
-          # - Attached Container Carrier on Monthly Hire: an agreement, a
-          #   vehicle added later, the day-wise trip grid with future days
-          #   locked, the extra-km amount and the list totals
-          #   (monthly_hire_test.dart, MH_RUN).
-          # seed_container_trips.dart runs both seeds. Nothing reaches OCR,
-          # HDFC or S3.
-          - name: container_trip
-            target: patrol_test/journey/container_trip_test.dart,patrol_test/journey/monthly_hire_test.dart
-            report_name: container-trip-playwright-report
-            seed_cmd: dart run tool/seed_container_trips.dart
-            seed_marker: "seed-container-trips] done"
-            needs_mock: false
-            video: "on"
-          # Transporter and fuel bills through the UI: a market trip from
-          # Manual Entry, its initial pay, a fill at the bunk, the held final
-          # pay, a fuel bill and a transporter bill, both paid in cash. The
-          # mock overlay is on only for S3 (the acknowledgement image); nothing
-          # reaches OCR or HDFC.
-          - name: tb_bills
-            target: patrol_test/journey/tb_bills_test.dart
-            report_name: tb-bills-playwright-report
-            seed_cmd: dart run tool/seed_tb_bills.dart
-            seed_marker: "seed-tb-bills] done"
-            needs_mock: true
-            video: "on"
-          # The transporter portal as a market transporter sees it while the
-          # tenant pays transporters through bills: the seed makes the staff
-          # side through the API (five trips in each state, an advance on
-          # account, an approved incentive and deduction, two bills, one paid
-          # in cash), then the transporter's own login checks every tab and
-          # raises its own invoice. Same stack as tb_bills.
-          - name: transporter_portal
-            target: patrol_test/journey/transporter_portal_test.dart
-            report_name: transporter-portal-playwright-report
-            seed_cmd: dart run tool/seed_transporter_portal.dart
-            seed_marker: "seed-transporter-portal] done"
-            needs_mock: true
-            video: "on"
-          # A truck on lease through a whole month through the UI: put on
-          # lease, a trip with a driver advance and a fill, a workshop day and
-          # a No Driver day, unload, the rent bill draft with its cut days,
-          # confirm, pay in cash, a locked advance, then the owner's own login
-          # sees the bill in the portal. Every date is in the previous month
-          # (IST), so the bill can be confirmed. Same stack as tb_bills; the
-          # mock overlay is on only for localstack (the GL queues).
-          - name: lease
-            target: patrol_test/journey/lease_test.dart
-            report_name: lease-playwright-report
-            seed_cmd: dart run tool/seed_lease.dart
-            seed_marker: "seed-lease] done"
-            needs_mock: true
-            video: "on"
-          # The trading module through the UI: masters, settings, two sales
-          # bills and their trips (issue, edit, cancel, trip retry). The seeded
-          # firm has e-invoice off, so nothing reaches GSTZen.
-          - name: trading
-            target: patrol_test/journey/trading_test.dart
-            report_name: trading-playwright-report
-            seed_cmd: dart run tool/seed_trading.dart
-            seed_marker: "seed-trading] done"
-            needs_mock: false
-            video: "on"
-          # WonderMake (stock issue and delivery-bill inbound) web app: every
-          # file under its patrol_test. The tests fake the Bluetooth scale (Web
-          # Serial), the file chooser and the S3 photo PUT inside the browser.
-          # Scanning a delivery bill goes through the backend's OCR, so the
-          # mock overlay (OCR mock + S3 bucket) is on. The browser runs on IST,
-          # like the people issuing stock. Many short tests, so video only for
-          # the ones that fail.
-          - name: wondermake
-            app_dir: flutter/apps/wondermake_web
-            base_href: /make/
-            target: patrol_test
-            report_name: wondermake-playwright-report
-            seed_cmd: dart run tool/seed_make.dart
-            seed_marker: "seed-make] done"
-            needs_mock: true
-            video: "retain-on-failure"
-            extra_args: --web-timezone Asia/Kolkata
+        # One leg per entry in .github/legs/web_journeys.json that the plan
+        # picked. video: Playwright recording mode per leg, uploaded as
+        # <name>-video: off | on | retain-on-failure | on-first-retry. gate: a
+        # functional-test folder of Dart tests that must pass before the Patrol
+        # run (driver_advance's offline HDFC mock system test).
+        include: ${{ fromJSON(needs.plan.outputs.journeys) }}
     name: Web E2E Journey (${{ matrix.name }})
     env:
       COMPOSE_FILES: >-
@@ -354,26 +281,26 @@ jobs:
           grep -q "${{ matrix.seed_marker }}" /tmp/seed.log
 
       - name: GATE — offline HDFC mock system test
-        if: matrix.name == 'driver_advance'
+        if: matrix.gate
         working-directory: functional-test
         env:
           BACKEND_URL: http://localhost:${{ env.WEB_PORT }}/api
           KRATOS_ADMIN_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/admin
           KRATOS_PUBLIC_URL: http://localhost:${{ env.WEB_PORT }}/auth/api/public
           DB_HOST: localhost
-        run: dart test --file-reporter=json:testReports/results.json test/mock/
+        run: dart test --file-reporter=json:testReports/results.json ${{ matrix.gate }}
 
       # continue-on-error: this suite is a small extra on top of the blocking
       # Patrol journey below it — a bug in the report generator must never abort
       # the job before the actual journey run.
       - name: Generate HDFC mock gate report
-        if: always() && matrix.name == 'driver_advance'
+        if: always() && matrix.gate
         continue-on-error: true
         working-directory: functional-test
         run: python3 scripts/gen_test_report.py
 
       - name: Upload HDFC mock gate report
-        if: always() && matrix.name == 'driver_advance'
+        if: always() && matrix.gate
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
@@ -468,48 +395,21 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Suites: every functional-test/suites/<suite>.json with "app": "web" in the
-  # wonderWhy ref under test. Suites that share a "leg" run on one stack, each
-  # seeded in turn, then one Patrol build runs all their tests. A new suite
-  # needs no edit here: file format and grouping are in
-  # .github/actions/e2e_suites/e2e_suites.sh. With no web suite the run job
-  # is skipped.
-  suite_plan:
-    name: Web E2E Suites (plan)
-    runs-on: ubuntu-latest
-    outputs:
-      legs: ${{ steps.legs.outputs.legs }}
-      has_legs: ${{ steps.legs.outputs.has_legs }}
-    steps:
-      - name: Check out pipelines repo for actions
-        uses: actions/checkout@v5
-
-      - name: Check out the suite files
-        uses: actions/checkout@v5
-        with:
-          repository: WonderWhyDev/wonderWhy
-          token: ${{ secrets.REPO_READ_TOKEN }}
-          ref: ${{ inputs.ref || 'main' }}
-          path: wonderWhy
-          fetch-depth: 1
-          sparse-checkout: functional-test/suites
-
-      - name: Group the web suites into legs
-        id: legs
-        uses: ./.github/actions/e2e_suites
-        with:
-          suites_dir: wonderWhy/functional-test/suites
-          app: web
-
+  # wonderWhy ref under test (grouped into legs by the plan job above). Suites
+  # that share a "leg" run on one stack, each seeded in turn, then one Patrol
+  # build runs all their tests. A new suite needs no edit here: file format and
+  # grouping are in .github/actions/e2e_suites/e2e_suites.sh. With no web suite
+  # picked the job is skipped.
   suites:
-    needs: suite_plan
-    if: needs.suite_plan.outputs.has_legs == 'true'
+    needs: plan
+    if: needs.plan.outputs.has_legs == 'true'
     # Same pin and reason as the journey job above (playwright on 26.04).
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.suite_plan.outputs.legs) }}
+        include: ${{ fromJSON(needs.plan.outputs.legs) }}
     name: Web E2E Suite (${{ matrix.leg }})
     env:
       COMPOSE_FILES: >-
