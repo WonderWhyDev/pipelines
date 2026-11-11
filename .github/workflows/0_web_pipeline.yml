@@ -194,12 +194,16 @@ jobs:
           ${{ matrix.coverage_cmd }}
 
   # wondermove_web's suite is large, so it runs as parallel shards (one runner
-  # per group) that each emit a partial lcov. coverage_wondermove merges those
-  # partials and runs the single global coverage gate. To add a feature to its
-  # own shard, list its dirs in `paths` AND add its folder name to DEDICATED in
-  # the "rest" group below. The "rest" group runs everything not dedicated, so a
-  # new feature missed here still runs there (and overlaps are harmless — line
-  # coverage is recomputed from the union of hits on merge).
+  # each) that each emit a partial lcov. coverage_wondermove merges those
+  # partials and runs the single global coverage gate.
+  #
+  # Test files are split evenly by path (shard N takes every 7th file), so new
+  # tests spread over all shards. flutter test compiles one test file at a
+  # time and writes the whole app for each (~2 s per file here), so a shard's
+  # time follows its file count. scripts/test_shard.sh (wonderWhy) also bundles
+  # the shard into one test file per core, so flutter compiles 4 times instead
+  # of ~200. Commits from before that script fall back to the plain even split.
+  # To change the shard count, edit the list; the total follows it.
   unit_test_wondermove:
     needs: find_latest_version
     if: ${{ !inputs.only || contains(format(' {0} ', inputs.only), ' unit ') }}
@@ -207,22 +211,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - group: trips
-            paths: 'test/features/trips'
-          - group: trip_status
-            paths: 'test/features/trip_status test/features/driver_trip_expense_report'
-          - group: vehicle_maintenance
-            paths: 'test/features/vehicle_maintenance test/features/toll test/features/vehicle_attendance test/features/driver_attendance'
-          - group: workshop_fuel
-            paths: 'test/features/workshop test/features/fuel'
-          - group: accounting
-            paths: 'test/features/accounting test/features/operations_dashboard test/features/driver_expense test/features/driver_salary test/features/final_pay_approval'
-          - group: vehicle_user
-            paths: 'test/features/vehicle_management test/features/vehicle_documents test/features/user_management test/features/unload_trip'
-          - group: rest
-            paths: ''
-    name: Unit Test wondermove (${{ matrix.group }})
+        shard: [1, 2, 3, 4, 5, 6, 7]
+    name: Unit Test wondermove (${{ matrix.shard }}/${{ strategy.job-total }})
     steps:
       - uses: actions/checkout@v5
         with:
@@ -245,25 +235,31 @@ jobs:
           cd ../../apps/wondermove_web && flutter pub get
 
       - name: Run shard tests with coverage
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ strategy.job-total }}
         run: |
+          # pipefail: a flutter test failure the reporter misses still fails.
+          set -o pipefail
           cd flutter/apps/wondermove_web
-          PATHS="${{ matrix.paths }}"
-          if [ -z "$PATHS" ]; then
-            # "rest" shard: core/shared/helpers + every feature not given its own shard.
-            DEDICATED="trips|trip_status|driver_trip_expense_report|vehicle_maintenance|toll|vehicle_attendance|driver_attendance|workshop|fuel|accounting|operations_dashboard|driver_expense|driver_salary|final_pay_approval|vehicle_management|vehicle_documents|user_management|unload_trip"
-            FEATURES=$(ls -d test/features/*/ | sed 's:/*$::' | grep -vE "/($DEDICATED)$" | tr '\n' ' ')
-            PATHS="test/core test/shared test/helpers $FEATURES"
+          if [ -x scripts/test_shard.sh ]; then
+            scripts/test_shard.sh "$SHARD" "$SHARDS"
+          else
+            # Device tests in test/integration_test never ran here.
+            FILES=$(find test -name '*_test.dart' -not -path 'test/integration_test/*' \
+              | LC_ALL=C sort | awk -v n="$SHARDS" -v i="$SHARD" '(NR - 1) % n == i - 1')
+            echo "Shard $SHARD/$SHARDS: $(echo "$FILES" | wc -l) test files"
+            # shellcheck disable=SC2086 # one path per word
+            flutter test $FILES \
+              --coverage \
+              --concurrency="$(nproc)" \
+              --reporter=json | python3 scripts/test_reporter.py
           fi
-          echo "Running: flutter test $PATHS"
-          flutter test $PATHS \
-            --coverage \
-            --concurrency="$(nproc)" \
-            --reporter=json | python3 scripts/test_reporter.py
 
       - name: Upload coverage shard
         uses: actions/upload-artifact@v4
         with:
-          name: wm-coverage-${{ matrix.group }}
+          name: wm-coverage-${{ matrix.shard }}
           path: flutter/apps/wondermove_web/coverage/lcov.info
           if-no-files-found: error
           retention-days: 1
