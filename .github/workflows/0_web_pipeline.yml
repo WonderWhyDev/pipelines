@@ -186,7 +186,18 @@ jobs:
           cd ../../apps/${{ matrix.app }} && flutter pub get
 
       - name: Install lcov
-        run: sudo apt-get install -y lcov
+        # The Ubuntu mirrors fail now and then (11 Nov: DNS errors, a 35 min
+        # hang, then red). Short tries with a fresh package index instead.
+        timeout-minutes: 10
+        run: |
+          APT_OPTS="-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
+          for try in 1 2 3; do
+            sudo apt-get install -y -q $APT_OPTS lcov && exit 0
+            [ "$try" -lt 3 ] || exit 1
+            echo "::warning::lcov install failed (try $try of 3); refreshing the package index"
+            sudo apt-get update -q $APT_OPTS || true
+            sleep $((try * 15))
+          done
 
       - name: Run tests with coverage
         run: |
@@ -278,7 +289,18 @@ jobs:
           ref: ${{ needs.find_latest_version.outputs.latest_version }}
 
       - name: Install lcov
-        run: sudo apt-get install -y lcov
+        # The Ubuntu mirrors fail now and then (11 Nov: DNS errors, a 35 min
+        # hang, then red). Short tries with a fresh package index instead.
+        timeout-minutes: 10
+        run: |
+          APT_OPTS="-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
+          for try in 1 2 3; do
+            sudo apt-get install -y -q $APT_OPTS lcov && exit 0
+            [ "$try" -lt 3 ] || exit 1
+            echo "::warning::lcov install failed (try $try of 3); refreshing the package index"
+            sudo apt-get update -q $APT_OPTS || true
+            sleep $((try * 15))
+          done
 
       - name: Download coverage shards
         uses: actions/download-artifact@v4

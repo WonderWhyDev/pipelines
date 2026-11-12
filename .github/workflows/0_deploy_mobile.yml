@@ -208,6 +208,14 @@ jobs:
           # hosted-hashes' (OS Error: Permission denied)". Create it ourselves so
           # docker mounts an existing, runner-owned directory.
           mkdir -p ~/.pub-cache
+          # Pull first, with retries: Docker Hub answers 500 now and then, and a
+          # failed pull inside `up` fails the whole leg.
+          for try in 1 2 3; do
+            docker compose $COMPOSE_FILES -p $PROJECT pull -q --ignore-buildable --include-deps \
+              db localstack mailpit kratos backend mock-server nginx && break
+            [ "$try" -lt 3 ] || exit 1
+            echo "::warning::docker image pull failed (try $try of 3)"; sleep $((try * 20))
+          done
           docker compose $COMPOSE_FILES -p $PROJECT up -d --wait db localstack mailpit
           docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
             awslocal sqs create-queue --queue-name margin
@@ -513,6 +521,14 @@ jobs:
         if: matrix.leg != 'none'
         run: |
           mkdir -p ~/.pub-cache
+          # Pull first, with retries: Docker Hub answers 500 now and then, and a
+          # failed pull inside `up` fails the whole leg.
+          for try in 1 2 3; do
+            docker compose $COMPOSE_FILES -p $PROJECT pull -q --ignore-buildable --include-deps \
+              db localstack mailpit kratos backend mock-server nginx && break
+            [ "$try" -lt 3 ] || exit 1
+            echo "::warning::docker image pull failed (try $try of 3)"; sleep $((try * 20))
+          done
           docker compose $COMPOSE_FILES -p $PROJECT up -d --wait db localstack mailpit
           docker compose $COMPOSE_FILES -p $PROJECT exec -T localstack \
             awslocal sqs create-queue --queue-name margin

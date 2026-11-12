@@ -322,6 +322,14 @@ jobs:
       - name: Bring up localstack and create SQS queue
         working-directory: wonderWhy
         run: |
+          # Pull first, with retries: Docker Hub answers 500 now and then, and a
+          # failed pull inside `up` fails the whole leg.
+          for try in 1 2 3; do
+            docker compose -f compose.yml -f compose.local.yml -p $PROJECT pull -q --ignore-buildable --include-deps \
+              localstack backend kratos nginx && break
+            [ "$try" -lt 3 ] || exit 1
+            echo "::warning::docker image pull failed (try $try of 3)"; sleep $((try * 20))
+          done
           docker compose -f compose.yml -f compose.local.yml -p $PROJECT up -d --wait localstack
           docker compose -f compose.yml -f compose.local.yml -p $PROJECT exec -T localstack awslocal sqs create-queue --queue-name margin
           docker compose -f compose.yml -f compose.local.yml -p $PROJECT exec -T localstack awslocal sqs create-queue \
