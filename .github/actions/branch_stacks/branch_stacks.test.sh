@@ -115,6 +115,8 @@ expect "mobile app code" "mobile" flutter/apps/wondermove_mobile/lib/main.dart
 expect "tally app" "tally" flutter/apps/wonder_tally_sync/lib/main.dart
 expect "shared flutter package" "web e2e mobile tally" flutter/packages/auth_core/lib/a.dart
 expect "flutter root file" "web e2e mobile tally" flutter/melos.yaml
+expect "app pubspec in map mode (no diff to read): the whole app" "mobile" flutter/apps/wondermove_mobile/pubspec.yaml
+expect "web app pubspec in map mode: web and e2e" "web e2e" flutter/apps/wondermove_web/pubspec.yaml
 expect "docs only: nothing" "" docs/a.md
 expect "deploy (terraform): nothing" "" deploy/env/prod/main.tf
 expect "wonderWhy's own workflows: nothing" "" .github/workflows/validator.yml
@@ -244,6 +246,49 @@ OUT=$(cd "$TMP/ww" && bash "$SCRIPT" changed main 2>&1)
 code=$?
 has "files=1" "against local main: only the branch's own change"
 if [ "$code" = 0 ]; then ok "against local main: exit 0"; else bad "against local main: exit 0 (got $code)"; fi
+
+echo "git mode: base as a commit SHA, version bumps"
+has_line() { if grep -qxF -- "$1" <<<"$OUT"; then ok "$2"; else bad "$2: no line [$1] in: $OUT"; fi; }
+# /land passes the local main commit its squash sits on.
+OUT=$(cd "$TMP/ww" && bash "$SCRIPT" changed "$(g rev-parse main)" 2>&1)
+code=$?
+has_line "files=1" "base given as a SHA: only the change on top of it"
+if [ "$code" = 0 ]; then ok "base SHA: exit 0"; else bad "base SHA: exit 0 (got $code)"; fi
+OUT=$(cd "$TMP/ww" && bash "$SCRIPT" changed 0123456789abcdef0123456789abcdef01234567 2>&1)
+code=$?
+if [ "$code" = 2 ]; then ok "base that is not a commit here: exit 2"; else bad "unknown base: exit 2 (got $code)"; fi
+has "is not a commit in this checkout" "unknown base: says so"
+
+P=flutter/apps/wondermove_mobile/pubspec.yaml
+WP=flutter/apps/wondermove_web/pubspec.yaml
+g checkout -q main
+mkdir -p "$TMP/ww/${P%/*}" "$TMP/ww/${WP%/*}" "$TMP/ww/automation/iosFastlane/release_notes"
+printf 'name: m\nversion: 1.1.4+2\ndependencies:\n  a: ^1.0.0\n' >"$TMP/ww/$P"
+printf 'name: w\nversion: 2.0.0+1\ndependencies:\n  a: ^1.0.0\n' >"$TMP/ww/$WP"
+g add -A && g commit -q -m "apps"
+bump() { sed -i.bak "s/^version: .*/version: $2/" "$TMP/ww/$1" && rm -f "$TMP/ww/$1.bak"; }
+
+g checkout -q -b wt/bump
+bump "$P" 1.1.5+2
+echo "release notes" >"$TMP/ww/automation/iosFastlane/release_notes/1.1.5.txt"
+g add -A && g commit -q -m "bump the mobile version"
+OUT=$(cd "$TMP/ww" && bash "$SCRIPT" changed main 2>&1)
+has_line "mobile_only=lint" "mobile version bump: the mobile lint only"
+has_line "web=false" "mobile version bump: no web"
+has_line "e2e=false" "mobile version bump: no e2e"
+printf '  b: ^2.0.0\n' >>"$TMP/ww/$P"
+g add -A && g commit -q -m "and a new dependency"
+OUT=$(cd "$TMP/ww" && bash "$SCRIPT" changed main 2>&1)
+has_line "mobile=true" "version bump plus a dependency: mobile runs"
+has_line "mobile_only=" "version bump plus a dependency: all of mobile"
+
+g checkout -q main
+g checkout -q -b wt/webbump
+bump "$WP" 2.0.1+1
+g add -A && g commit -q -m "bump the web version"
+OUT=$(cd "$TMP/ww" && bash "$SCRIPT" changed main 2>&1)
+has_line "web_only=lint:wondermove_web" "web version bump: the web app's lint only"
+has_line "e2e=false" "web version bump: no e2e"
 
 bash "$SCRIPT" nope >/dev/null 2>&1
 code=$?

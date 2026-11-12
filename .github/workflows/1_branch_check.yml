@@ -4,7 +4,9 @@
 # defined once, in its own pipeline. Their deploy and store jobs are skipped.
 #
 # scope changed (default) runs only what the paths the branch changed since it
-# left main need, down to the job and the E2E leg: a changed suite runs its own
+# left main need (since `base` when given: /land passes the local main commit
+# its squash sits on, so other landed commits GitHub's main lacks do not count),
+# down to the job and the E2E leg: a changed suite runs its own
 # leg and the app's lint, not every pipeline. Each part gets an "only" list of
 # its jobs and legs (empty = all of them). The folder map is
 # .github/actions/branch_stacks/branch_stacks.sh, the leg lists .github/legs.
@@ -38,6 +40,11 @@ on:
           - changed
           - all
         default: changed
+      base:
+        description: 'commit SHA the change sits on (/land passes it); empty = where the branch left main on GitHub'
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: branch-check-${{ inputs.branch }}
@@ -87,6 +94,7 @@ jobs:
         with:
           repo_path: wonderWhy
           scope: ${{ inputs.scope }}
+          base: ${{ inputs.base }}
 
   backend:
     needs: plan

@@ -15,6 +15,13 @@ inputs:
   scope:
     description: "changed: only the parts the branch touched; all: every part"
     required: true
+  base:
+    description: >-
+      Commit SHA the change sits on: changed diffs from here. /land passes the
+      local main commit its squash sits on. Empty: where the branch left main
+      on GitHub.
+    required: false
+    default: ''
 
 outputs:
   sha:
@@ -59,11 +66,16 @@ runs:
       working-directory: ${{ inputs.repo_path }}
       env:
         SCOPE: ${{ inputs.scope }}
+        BASE: ${{ inputs.base }}
       # Only key=value lines are outputs; the rest (an ::error:: line) is for the
       # log. A path the map does not know exits 3 and fails the step.
       run: |
+        if [ -n "$BASE" ] && ! [[ $BASE =~ ^[0-9a-f]{7,40}$ ]]; then
+          echo "::error::base must be a commit SHA, got: $BASE"
+          exit 2
+        fi
         code=0
-        bash "$GITHUB_ACTION_PATH/branch_stacks.sh" "$SCOPE" >"$RUNNER_TEMP/branch_stacks.out" || code=$?
+        bash "$GITHUB_ACTION_PATH/branch_stacks.sh" "$SCOPE" ${BASE:+"$BASE"} >"$RUNNER_TEMP/branch_stacks.out" || code=$?
         cat "$RUNNER_TEMP/branch_stacks.out"
         grep -E '^[a-z0-9_]+=' "$RUNNER_TEMP/branch_stacks.out" >>"$GITHUB_OUTPUT" || true
         exit "$code"

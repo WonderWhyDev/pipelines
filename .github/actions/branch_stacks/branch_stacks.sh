@@ -3,7 +3,9 @@
 #
 #   branch_stacks.sh changed [base]  inside a wonderWhy checkout: diff the branch
 #                                    with its merge base on <base> (default
-#                                    origin/main) and map the changed paths
+#                                    origin/main) and map the changed paths.
+#                                    /land passes the local main commit its
+#                                    squash sits on, so only that change counts
 #   branch_stacks.sh all             every test
 #   branch_stacks.sh map             read paths on stdin and map them; run it from
 #                                    a wonderWhy checkout (the tests use a fake one)
@@ -49,6 +51,10 @@
 #   <app>/patrol_test/ of wondermove_web, wondermake_web
 #     and wondermove_mobile                               the app's lint (Dart files)
 #                                                         and the legs that use the file
+#   <app>/pubspec.yaml of those three apps, when only its
+#     version: line changed (a release bump; git mode
+#     only, it reads the diff)                            the app's lint: pub get parses
+#                                                         the version; tests never see it
 #   flutter/apps/wondermove_web/, wondermake_web/         web, e2e
 #   flutter/apps/wondermove_mobile/                       mobile
 #   flutter/apps/wonder_tally_sync/                       tally
@@ -165,6 +171,17 @@ legs() {
   esac
 }
 
+# version_only <pubspec>: the branch changed nothing in the file but its version:
+# line (a release bump). Reads the diff from DIFF_BASE, so git mode only: in map
+# mode, or when the diff cannot be read, the answer is no.
+version_only() {
+  [ -n "${DIFF_BASE:-}" ] || return 1
+  git diff -U0 --no-color --no-ext-diff "$DIFF_BASE" HEAD -- "$1" 2>/dev/null |
+    awk '/^@@/ { hunk = 1; next }
+      hunk && /^[-+]/ { n++; if ($0 !~ /^[-+]version:[ \t]/) other = 1 }
+      END { exit !(n > 0 && !other) }'
+}
+
 # app_test <file> <app dir> <lint unit> <fallback units>: a file under the app's
 # patrol_test.
 app_test() {
@@ -192,6 +209,9 @@ parts_for() {
     "$WEB"/patrol_test/*) app_test "$1" "$WEB" web:lint:wondermove_web "e2e:*" ;;
     "$MAKE"/patrol_test/*) app_test "$1" "$MAKE" web:lint:wondermake_web "e2e:*" ;;
     "$MOBILE"/patrol_test/*) app_test "$1" "$MOBILE" mobile:lint "mobile:e2e:* mobile:suite:*" ;;
+    "$WEB"/pubspec.yaml | "$MAKE"/pubspec.yaml)
+      if version_only "$1"; then echo "web:lint:$(basename "$(dirname "$1")")"; else echo "web:* e2e:*"; fi ;;
+    "$MOBILE"/pubspec.yaml) if version_only "$1"; then echo mobile:lint; else echo "mobile:*"; fi ;;
     "$WEB"/* | "$MAKE"/*) echo "web:* e2e:*" ;;
     "$MOBILE"/*) echo "mobile:*" ;;
     flutter/apps/wonder_tally_sync/*) echo "tally:*" ;;
@@ -316,7 +336,9 @@ main() {
   if [ "$base_ref" = refs/remotes/origin/main ] && ! git rev-parse -q --verify refs/remotes/origin/main >/dev/null; then
     git fetch -q --no-tags --filter=blob:none origin +refs/heads/main:refs/remotes/origin/main
   fi
+  git rev-parse -q --verify "$base_ref^{commit}" >/dev/null || die "base $base_ref is not a commit in this checkout"
   base=$(git merge-base "$base_ref" HEAD)
+  DIFF_BASE=$base
   # Names only and no rename detection: a blobless clone has the trees this
   # needs, and never has to fetch a file's contents for the diff.
   files=$(git diff --name-only --no-renames "$base" HEAD)
