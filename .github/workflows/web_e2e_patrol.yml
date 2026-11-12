@@ -164,6 +164,7 @@ jobs:
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
             --web-headless true --web-server-timeout 600 \
+            --web-timezone Asia/Kolkata \
             --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]'
 
       - name: Upload Patrol report

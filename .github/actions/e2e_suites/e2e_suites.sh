@@ -25,8 +25,9 @@
 #   mock      true: the leg gets the compose.mock.yml overlay (OCR/HDFC mock,
 #             S3 bucket, mailpit). Any suite asking turns it on for its leg.
 #             Default false. Android legs always have it.
-#   timezone  web only: the browser's timezone, e.g. "Asia/Kolkata". Default
-#             the runner's (UTC). Every suite of a leg must ask for the same one.
+#   timezone  web only: the browser's timezone. Default Asia/Kolkata, which
+#             web_e2e_journey.yml gives every browser. Every suite of a leg
+#             must ask for the same one.
 #   about     free text, one line on what the suite drives.
 # Any other field is an error, so a typo cannot pass silently.
 #

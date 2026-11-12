@@ -37,6 +37,10 @@
 # mock -> CBX reference (mTLS + JOSE), the proven offline-integration proof.
 # It only gates the driver-advance leg — with fail-fast off, a GATE failure no
 # longer blocks the other two (unrelated) suites from running.
+#
+# Every leg runs on IST, like the app's users (it is used only in India): the
+# workflow's TZ covers the seeds and Patrol on the runner, and --web-timezone
+# pins the browser. The docker stack keeps its own UTC.
 
 name: Web E2E Journey (offline mock)
 
@@ -72,6 +76,10 @@ on:
         required: true
       GHRC_SECRET_KEY:
         required: true
+
+# IST on the runner, so a seed's "today" is the browser's "today".
+env:
+  TZ: Asia/Kolkata
 
 jobs:
   # Which legs run: every journey in .github/legs/web_journeys.json and every
@@ -358,6 +366,7 @@ jobs:
             --web-headless true --web-server-timeout 600 \
             --web-video ${{ matrix.video }} --web-results-dir "$PWD/test-results" \
             --web-timeout 1200000 \
+            --web-timezone "$TZ" \
             ${{ matrix.extra_args }} \
             --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
             --verbose
@@ -532,8 +541,6 @@ jobs:
           sed -i 's#<base href="/new/">#<base href="/">#' web/index.html
           flutter pub get
           export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
-          TZ_ARGS=""
-          if [ -n "$SUITE_TZ" ]; then TZ_ARGS="--web-timezone $SUITE_TZ"; fi
           PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
             --target "$TARGETS" \
             --web-port 3005 \
@@ -542,7 +549,7 @@ jobs:
             --web-headless true --web-server-timeout 600 \
             --web-video retain-on-failure --web-results-dir "$PWD/test-results" \
             --web-timeout 900000 \
-            $TZ_ARGS \
+            --web-timezone "${SUITE_TZ:-$TZ}" \
             --web-browser-args '["--no-sandbox","--enable-unsafe-swiftshader","--lang=en-US","--accept-lang=en-US"]' \
             --verbose
 

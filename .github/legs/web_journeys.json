@@ -110,7 +110,6 @@
     "seed_marker": "seed-make] done",
     "needs_mock": true,
     "video": "retain-on-failure",
-    "extra_args": "--web-timezone Asia/Kolkata",
-    "about": "WonderMake (stock issue and delivery-bill inbound) web app: every file under its patrol_test. The tests fake the Bluetooth scale (Web Serial), the file chooser and the S3 photo PUT inside the browser. Scanning a delivery bill goes through the backend's OCR, so the mock overlay (OCR mock + S3 bucket) is on. The browser runs on IST, like the people issuing stock. Many short tests, so video only for the ones that fail."
+    "about": "WonderMake (stock issue and delivery-bill inbound) web app: every file under its patrol_test. The tests fake the Bluetooth scale (Web Serial), the file chooser and the S3 photo PUT inside the browser. Scanning a delivery bill goes through the backend's OCR, so the mock overlay (OCR mock + S3 bucket) is on. Many short tests, so video only for the ones that fail."
   }
 ]
