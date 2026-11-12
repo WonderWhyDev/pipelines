@@ -56,9 +56,9 @@
     "report_name": "container-trip-playwright-report",
     "seed_cmd": "dart run tool/seed_container_trips.dart",
     "seed_marker": "seed-container-trips] done",
-    "needs_mock": false,
+    "needs_mock": true,
     "video": "on",
-    "about": "Both container journeys through the UI, in one Patrol bundle. Detachable Container Trailer: a container price point (1x20, base amount up to a base qty, extra per ton), a Bulker on that lane left unpriced, the container trip by Manual Entry priced by size and load, then its container number and halt charge on Trip Status (container_trip_test.dart, CT_RUN). Attached Container Carrier on Monthly Hire: an agreement, a vehicle added later, the day-wise trip grid with future days locked, the extra-km amount and the list totals (monthly_hire_test.dart, MH_RUN). seed_container_trips.dart runs both seeds. Nothing reaches OCR, HDFC or S3."
+    "about": "Both container journeys through the UI, in one Patrol bundle. Detachable Container Trailer: a container price point (1x20, base amount up to a base qty, extra per ton), a Bulker on that lane left unpriced, the container trip by Manual Entry priced by size and load, then its container number and halt charge on Trip Status (container_trip_test.dart, CT_RUN). Attached Container Carrier on Monthly Hire: an agreement, a vehicle added later, the day-wise trip grid with future days locked, the extra-km amount and the list totals, then the hire driver's salary verified and paid in cash (monthly_hire_test.dart, MH_RUN). seed_container_trips.dart runs both seeds. The mock overlay is on only for S3 (the driver salary sheet upload); nothing reaches OCR or HDFC."
   },
   {
     "name": "tb_bills",
