@@ -530,6 +530,13 @@ jobs:
             # 1,2,14 are "" because nothing reads them: CLIENT_ID/ZITADEL_PAT are
             # Zitadel-era (auth is Kratos now) and COMPOSITE_API_KEY is set at
             # runtime from Secrets Manager (see setApiKeyForPayment.ts).
+            # The API permission switches are environment variables (vars, not
+            # secrets) of this GitHub environment. Unset = empty = shadow mode.
+            # wonderWhy backend/deploy/compose.yml passes them to the container;
+            # how to set and roll back: docs/wonderCoder/api_authorization-deepak/runbook.md
+            AUTHZ_ENFORCE="${{ vars.AUTHZ_ENFORCE }}" \
+            AUTHZ_ENFORCE_NON_EMPLOYEE="${{ vars.AUTHZ_ENFORCE_NON_EMPLOYEE }}" \
+            FORCE_PASSWORD_CHANGE_ENFORCE="${{ vars.FORCE_PASSWORD_CHANGE_ENFORCE }}" \
             sh ./deploy.sh "" \
               "" \
               "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" \
@@ -652,6 +659,10 @@ jobs:
             # positional args: see the note on the QA deploy above. Dead args stay
             # as "" so later positions do not shift; all args quoted so an empty
             # secret cannot collapse and shift them either.
+            # API permission switches: see the note on the QA deploy above.
+            AUTHZ_ENFORCE="${{ vars.AUTHZ_ENFORCE }}" \
+            AUTHZ_ENFORCE_NON_EMPLOYEE="${{ vars.AUTHZ_ENFORCE_NON_EMPLOYEE }}" \
+            FORCE_PASSWORD_CHANGE_ENFORCE="${{ vars.FORCE_PASSWORD_CHANGE_ENFORCE }}" \
             sh ./deploy.sh "" \
               "" \
               "auth.${{ secrets.DOMAIN_NAME }}.${{ secrets.BASE_DOMAIN }}" \
