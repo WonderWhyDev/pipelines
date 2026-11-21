@@ -9,8 +9,9 @@ FROM ubuntu:24.04
 
 ARG RUNNER_VERSION=2.338.2
 ARG PLAYWRIGHT_VERSION=1.56.0
-# Docker Engine 29.10.0's dockerd segfaults at start on wonderwhy-pc (kernel
-# 7.0, Intel i3-10105, 21 Nov 2026), even for `dockerd --version`; 29.9.3 runs.
+# Pinned to the engine checked on wonderwhy-pc (21 Nov 2026). 29.10.0 was not
+# at fault there: the box crashed right after a build and left a cut-off
+# dockerd file in the image, which then segfaulted. Run `sync` after a build.
 ARG DOCKER_VERSION=5:29.9.3-1~ubuntu.24.04~noble
 
 ENV DEBIAN_FRONTEND=noninteractive \
