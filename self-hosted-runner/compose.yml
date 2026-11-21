@@ -12,8 +12,9 @@ x-runner: &runner
   # Chromium needs more than Docker's default 64 MB /dev/shm.
   shm_size: 2gb
   # One no_driver leg peaked at 8 GB (Flutter debug build, 21 Nov 2026). The
-  # cap fails the leg instead of freezing a 12 GB box.
-  mem_limit: 10g
+  # cap fails the leg instead of freezing the box: wonderwhy-pc shows 11 GB,
+  # so 9 GB leaves the OS about 2 GB.
+  mem_limit: 9g
 
 services:
   e2e-1:
