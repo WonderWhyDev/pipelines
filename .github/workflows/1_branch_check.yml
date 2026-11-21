@@ -45,6 +45,11 @@ on:
         required: false
         type: string
         default: ''
+      patrol_mode:
+        description: 'web E2E build mode: debug or profile; empty = repo variable E2E_PATROL_MODE, else debug'
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: branch-check-${{ inputs.branch }}
@@ -125,6 +130,7 @@ jobs:
     with:
       ref: ${{ needs.plan.outputs.sha }}
       only: ${{ needs.plan.outputs.e2e_only }}
+      patrol_mode: ${{ inputs.patrol_mode }}
     secrets:
       REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
       GHRC_SECRET_KEY: ${{ secrets.GHRC_SECRET_KEY }}

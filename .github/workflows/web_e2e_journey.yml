@@ -60,6 +60,11 @@ on:
         required: false
         type: string
         default: ''
+      patrol_mode:
+        description: 'Flutter build mode of the app under test: debug or profile; empty = repo variable E2E_PATROL_MODE, else debug'
+        required: false
+        type: string
+        default: ''
   workflow_call:
     inputs:
       ref:
@@ -68,6 +73,11 @@ on:
         type: string
       only:
         description: 'Legs to run, e.g. "journey:lease suite:toll_gst"; empty = every leg'
+        required: false
+        type: string
+        default: ''
+      patrol_mode:
+        description: 'Flutter build mode of the app under test: debug or profile; empty = repo variable E2E_PATROL_MODE, else debug'
         required: false
         type: string
         default: ''
@@ -364,6 +374,11 @@ jobs:
       # video, so recording would push it over. 20 min, still inside the job's 40.
       # app_dir / base_href default to wondermove_web, which prod serves at /new/;
       # the wondermake leg overrides both (prod serves it at /make/).
+      # Build mode: input patrol_mode, else the repo variable E2E_PATROL_MODE,
+      # else debug. profile builds once with dart2js and leaves no compiler in
+      # memory: the no_driver leg's test phase went from 8.05 GB to 3.57 GB
+      # (21 Nov 2026). Text entry needs typeInto (patrol_test/helpers/
+      # text_entry.dart) there, because tester.enterText types only in debug.
       - name: Patrol ${{ matrix.name }} (UI)
         working-directory: ${{ matrix.app_dir || 'flutter/apps/wondermove_web' }}
         env:
@@ -375,6 +390,7 @@ jobs:
           flutter pub get
           export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
           PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
+            --${{ inputs.patrol_mode || vars.E2E_PATROL_MODE || 'debug' }} \
             --target ${{ matrix.target }} \
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
@@ -571,6 +587,7 @@ jobs:
           flutter pub get
           export CHROME_EXECUTABLE="$(find "$HOME/.cache/ms-playwright" -name chrome -path '*chrome-linux*' | head -1)"
           PATROL_ANALYTICS_ENABLED=false patrol test -d chrome \
+            --${{ inputs.patrol_mode || vars.E2E_PATROL_MODE || 'debug' }} \
             --target "$TARGETS" \
             --web-port 3005 \
             --dart-define=ENV=local --dart-define=E2E=true \
