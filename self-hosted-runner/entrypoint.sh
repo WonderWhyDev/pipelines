@@ -12,6 +12,10 @@ if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
     > /sys/fs/cgroup/cgroup.subtree_control || true
 fi
 
+# A restart or a reboot keeps the container's files: clear the last run's pid
+# files, or dockerd and containerd may refuse to start.
+rm -f /var/run/docker.pid /var/run/docker/containerd/containerd.pid
+
 dockerd > /var/log/dockerd.log 2>&1 &
 for _ in $(seq 1 60); do
   docker info > /dev/null 2>&1 && break
