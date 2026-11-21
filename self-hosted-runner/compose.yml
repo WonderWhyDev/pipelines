@@ -1,0 +1,35 @@
+# GitHub Actions runners for the web E2E legs: one container each, with its
+# own Docker inside. See README.md.
+#   first start:  RUNNER_TOKEN=<token> docker compose up -d --build
+#   later starts: docker compose up -d
+name: ww-runners
+
+x-runner: &runner
+  build: .
+  privileged: true
+  init: true
+  restart: unless-stopped
+  # Chromium needs more than Docker's default 64 MB /dev/shm.
+  shm_size: 2gb
+  # One no_driver leg peaked at 8 GB (Flutter debug build, 21 Nov 2026). The
+  # cap fails the leg instead of freezing a 12 GB box.
+  mem_limit: 10g
+
+services:
+  e2e-1:
+    <<: *runner
+    environment:
+      RUNNER_URL: https://github.com/WonderWhyDev/pipelines
+      RUNNER_NAME: ww-e2e-1
+      RUNNER_LABELS: ww-e2e
+      RUNNER_TOKEN: ${RUNNER_TOKEN:-}
+    # The runner volume keeps the registration, tool cache and checkout. The
+    # docker volume is required: the inner dockerd cannot keep its images on
+    # the container's own overlay filesystem.
+    volumes:
+      - e2e-1-runner:/home/runner/actions-runner
+      - e2e-1-docker:/var/lib/docker
+
+volumes:
+  e2e-1-runner:
+  e2e-1-docker:

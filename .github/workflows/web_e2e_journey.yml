@@ -131,7 +131,11 @@ jobs:
     # support chromium on ubuntu26.04-x64", run 40855901008). Playwright 1.61+
     # supports 26.04, but no patrol release bundles it yet (4.10.0 is still on
     # 1.56.0). Revisit when leancodepl/patrol#3319 (playwright 1.64.1) ships.
-    runs-on: ubuntu-24.04
+    # A leg named in the repo variable E2E_BOX_LEGS (a JSON list, e.g.
+    # ["operations"]) runs on our own box, the self-hosted runners labelled
+    # ww-e2e (self-hosted-runner/); every other leg stays on GitHub. The box
+    # never falls back to GitHub: if it is down, set the variable to [].
+    runs-on: ${{ contains(fromJSON(vars.E2E_BOX_LEGS || '[]'), matrix.name) && 'ww-e2e' || 'ubuntu-24.04' }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -428,8 +432,9 @@ jobs:
   suites:
     needs: plan
     if: needs.plan.outputs.has_legs == 'true'
-    # Same pin and reason as the journey job above (playwright on 26.04).
-    runs-on: ubuntu-24.04
+    # Same pin and reason as the journey job above (playwright on 26.04), and
+    # the same E2E_BOX_LEGS switch, keyed by the leg name.
+    runs-on: ${{ contains(fromJSON(vars.E2E_BOX_LEGS || '[]'), matrix.leg) && 'ww-e2e' || 'ubuntu-24.04' }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
