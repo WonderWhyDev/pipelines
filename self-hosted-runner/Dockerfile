@@ -9,6 +9,9 @@ FROM ubuntu:24.04
 
 ARG RUNNER_VERSION=2.338.2
 ARG PLAYWRIGHT_VERSION=1.56.0
+# Docker Engine 29.10.0's dockerd segfaults at start on wonderwhy-pc (kernel
+# 7.0, Intel i3-10105, 21 Nov 2026), even for `dockerd --version`; 29.9.3 runs.
+ARG DOCKER_VERSION=5:29.9.3-1~ubuntu.24.04~noble
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8 \
@@ -30,7 +33,8 @@ RUN install -m 0755 -d /etc/apt/keyrings \
       > /etc/apt/sources.list.d/docker.list \
  && apt-get update \
  && apt-get install -y --no-install-recommends \
-      docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
+      docker-ce=${DOCKER_VERSION} docker-ce-cli=${DOCKER_VERSION} containerd.io \
+      docker-buildx-plugin docker-compose-plugin \
  && rm -rf /var/lib/apt/lists/*
 
 # Chromium's system libraries. The GitHub image ships them, and the job
